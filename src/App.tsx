@@ -7,6 +7,7 @@ const AppLayout = lazy(() => import('./routes/AppLayout'));
 const Library = lazy(() => import('./routes/Library'));
 const Reader = lazy(() => import('./routes/Reader'));
 const Settings = lazy(() => import('./routes/Settings'));
+const Install = lazy(() => import('./routes/Install'));
 const Privacy = lazy(() => import('./routes/Privacy'));
 const NotFound = lazy(() => import('./routes/NotFound'));
 
@@ -31,6 +32,7 @@ export function App() {
               <Route path="read/:bookId" element={<Reader />} />
               <Route path="settings" element={<Settings />} />
             </Route>
+            <Route path="/installer" element={<Install />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

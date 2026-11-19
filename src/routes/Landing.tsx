@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { domAnimation, LazyMotion } from 'framer-motion';
-import { ArrowRight, BookOpen, Check, Download, Languages, Mail, Share, Smartphone, Volume2, WifiOff } from 'lucide-react';
+import { ArrowRight, BookOpen, Check, Download, Languages, Mail, Smartphone, Volume2, WifiOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Logo } from '@/components/Logo';
 import { Reveal } from '@/components/landing/Reveal';
@@ -43,6 +43,9 @@ function Header() {
           <a href="#fonctionnalites" className="hidden rounded-full px-4 py-2 text-sm text-muted hover:text-fg sm:inline-block">
             Fonctionnalités
           </a>
+          <Link to="/installer" className="hidden rounded-full px-4 py-2 text-sm text-muted hover:text-fg sm:inline-block">
+            Installer
+          </Link>
           <ButtonLink to="/app" size="sm" aria-label="Ouvrir l’application Lumen">
             Ouvrir l’app
           </ButtonLink>
@@ -185,12 +188,11 @@ function InstallCard() {
               <Check className="size-4 text-amber" aria-hidden /> Lumen est installé sur cet appareil.
             </p>
           )}
-          {state === 'ios' && (
-            <p className="text-sm text-muted">
-              Sur iPhone : touchez <Share className="mx-0.5 inline size-4 align-text-bottom" aria-label="Partager" /> puis « Sur l’écran d’accueil ».
-            </p>
+          {state !== 'installed' && state !== 'available' && (
+            <ButtonLink to="/installer" variant="secondary" aria-label="Voir comment installer Lumen sur Android ou Mac">
+              <Download className="size-4" aria-hidden /> Installer sur Android ou Mac
+            </ButtonLink>
           )}
-          {state === 'unsupported' && <p className="text-sm text-muted">Ouvrez Lumen dans Chrome, Edge ou Safari pour l’installer depuis le menu du navigateur.</p>}
           {result && <p className="mt-3 text-sm text-muted">{result}</p>}
         </div>
       </article>

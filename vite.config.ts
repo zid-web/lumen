@@ -66,7 +66,7 @@ export default defineConfig({
         short_name: 'Lumen',
         description: 'Vos livres lus à voix haute, dans votre langue. Voix homme & femme, traduction instantanée, hors-ligne.',
         lang: 'fr',
-        start_url: '/app',
+        start_url: '/app?source=pwa',
         scope: '/',
         display: 'standalone',
         orientation: 'portrait',

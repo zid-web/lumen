@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Library, Settings, WifiOff } from 'lucide-react';
+import { Download, Library, Settings, WifiOff } from 'lucide-react';
+import { useInstallPrompt } from '@/hooks/useInstallPrompt';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { Logo } from '@/components/Logo';
 import { Button } from '@/components/ui/button';
@@ -48,6 +49,7 @@ export default function AppLayout() {
   const online = useOnline();
   const { pathname } = useLocation();
   const inReader = pathname.startsWith('/app/read/');
+  const { state: installState } = useInstallPrompt();
 
   useEffect(() => {
     void fetchHealth();
@@ -78,6 +80,12 @@ export default function AppLayout() {
               <nav aria-label="Navigation de l’application" className="flex gap-1">
                 {nav('/app', 'Bibliothèque', Library, true)}
                 {nav('/app/settings', 'Réglages', Settings)}
+                {installState !== 'installed' && (
+                  <Link to="/installer" aria-label="Installer l’application Lumen" className="inline-flex h-10 items-center gap-2 rounded-full px-3 text-sm text-amber hover:bg-surface-2">
+                    <Download className="size-4" aria-hidden />
+                    <span className="hidden sm:inline">Installer</span>
+                  </Link>
+                )}
               </nav>
             </div>
           </header>
