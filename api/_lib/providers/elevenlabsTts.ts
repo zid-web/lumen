@@ -52,7 +52,10 @@ export class ElevenLabsTtsProvider implements ServerTtsProvider {
         model_id: this.model,
         language_code: req.lang,
         // ElevenLabs accepte 0.7..1.2 ; au-delà, le client applique playbackRate.
-        voice_settings: { stability: 0.5, similarity_boost: 0.75, speed: Math.min(1.2, Math.max(0.7, req.speed)) },
+        // Réglages « livre audio » : plus d'expressivité, timbre fidèle.
+        voice_settings: { stability: 0.42, similarity_boost: 0.8, style: 0.2, use_speaker_boost: true, speed: Math.min(1.2, Math.max(0.7, req.speed)) },
+        ...(req.context?.previous ? { previous_text: req.context.previous } : {}),
+        ...(req.context?.next ? { next_text: req.context.next } : {}),
       }),
       ...(signal ? { signal } : {}),
     });

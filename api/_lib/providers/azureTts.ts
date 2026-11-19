@@ -8,9 +8,8 @@ export function escapeXml(s: string): string {
   return s.replace(/[<>&'"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' })[c] ?? c);
 }
 
-export function buildSsml(req: TtsRequest): string {
+export function buildSsml(req: TtsRequest, voice: string = LANGS[req.lang].narrator?.[req.gender] ?? LANGS[req.lang].azure[req.gender]): string {
   const meta = LANGS[req.lang];
-  const voice = meta.azure[req.gender];
   const rate = `${req.speed >= 1 ? '+' : ''}${Math.round((req.speed - 1) * 100)}%`;
   const pitch = `${req.pitch >= 0 ? '+' : ''}${req.pitch}st`;
   return (
@@ -27,7 +26,22 @@ export class AzureTtsProvider implements ServerTtsProvider {
     private readonly region: string,
   ) {}
 
-  synthesize(req: TtsRequest, signal?: AbortSignal): Promise<TtsResponse> {
+  async synthesize(req: TtsRequest, signal?: AbortSignal): Promise<TtsResponse> {
+    const meta = LANGS[req.lang];
+    const narrator = meta.narrator?.[req.gender];
+    if (narrator) {
+      try {
+        return await this.synthesizeWith(req, narrator, signal);
+      } catch (err) {
+        if (signal?.aborted) throw err;
+        // Voix narratrice non disponible dans cette région : voix neuronale standard.
+        console.warn(`[azure] ${narrator} indisponible, repli`, err instanceof Error ? err.message : err);
+      }
+    }
+    return this.synthesizeWith(req, meta.azure[req.gender], signal);
+  }
+
+  private synthesizeWith(req: TtsRequest, voice: string, signal?: AbortSignal): Promise<TtsResponse> {
     const config = sdk.SpeechConfig.fromSubscription(this.key, this.region);
     config.speechSynthesisOutputFormat = sdk.SpeechSynthesisOutputFormat.Audio24Khz48KBitRateMonoMp3;
     // `null` : pas de sortie haut-parleur, on récupère le buffer.
@@ -48,7 +62,7 @@ export class AzureTtsProvider implements ServerTtsProvider {
       signal?.addEventListener('abort', onAbort, { once: true });
 
       synth.speakSsmlAsync(
-        buildSsml(req),
+        buildSsml(req, voice),
         (result) => {
           signal?.removeEventListener('abort', onAbort);
           synth.close();

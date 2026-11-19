@@ -168,8 +168,7 @@ export class TtsController {
     this.handlers.onParagraph?.(q.id, index);
     if (!text) return void this.play(index + 1);
 
-    const voice = this.opts.getVoice();
-    const req: TtsSynthesisRequest = { text, lang: q.lang, gender: voice.gender, speed: voice.speed, pitch: voice.pitch };
+    const req = this.buildRequest(q, index, text);
     const cloud = this.degraded ? null : this.opts.getCloud();
 
     let result: TtsSynthesisResult | null = null;
@@ -268,6 +267,14 @@ export class TtsController {
 
   // ---------------------------------------------------------------------------
 
+  private buildRequest(q: PlayerQueue, index: number, text: string): TtsSynthesisRequest {
+    const voice = this.opts.getVoice();
+    const previous = q.paragraphs[index - 1]?.trim().slice(-600);
+    const next = q.paragraphs[index + 1]?.trim().slice(0, 600);
+    const context = previous || next ? { ...(previous ? { previous } : {}), ...(next ? { next } : {}) } : undefined;
+    return { text, lang: q.lang, gender: voice.gender, speed: voice.speed, pitch: voice.pitch, ...(context ? { context } : {}) };
+  }
+
   private async resolveCloud(cloud: CloudTtsProvider, index: number, req: TtsSynthesisRequest): Promise<TtsSynthesisResult | null> {
     const p = this.prefetched;
     if (p && p.index === index && p.sig === sig(req)) {
@@ -283,8 +290,7 @@ export class TtsController {
     const q = this.queue;
     const text = q?.paragraphs[index]?.trim();
     if (!q || !text) return;
-    const voice = this.opts.getVoice();
-    const req: TtsSynthesisRequest = { text, lang: q.lang, gender: voice.gender, speed: voice.speed, pitch: voice.pitch };
+    const req = this.buildRequest(q, index, text);
     if (this.prefetched?.sig === sig(req)) return;
     this.discardPrefetch();
     const promise = (navigator.onLine ? cloud.synthesize(req) : cloud.lookup(req)).catch(() => null);

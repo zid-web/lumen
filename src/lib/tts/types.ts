@@ -8,6 +8,8 @@ export interface TtsSynthesisRequest {
   gender: VoiceGender;
   speed: number; // 0.75..2
   pitch: number; // -20..20 (demi-tons)
+  /** Paragraphes voisins pour une intonation continue (non inclus dans la clé de cache). */
+  context?: { previous?: string; next?: string };
 }
 
 export interface TtsSynthesisResult {

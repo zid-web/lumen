@@ -15,6 +15,8 @@ export const TtsRequestSchema = z.object({
   gender: GenderSchema,
   speed: z.number().min(SPEED_MIN).max(SPEED_MAX).default(1),
   pitch: z.number().int().min(PITCH_MIN).max(PITCH_MAX).default(0),
+  /** Paragraphes voisins : donnent au moteur l'intonation d'une lecture continue (ElevenLabs). */
+  context: z.object({ previous: z.string().max(1000).optional(), next: z.string().max(1000).optional() }).optional(),
 });
 export type TtsRequest = z.infer<typeof TtsRequestSchema>;
 

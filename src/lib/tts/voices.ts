@@ -62,7 +62,8 @@ function score(v: VoiceLike, lang: SupportedLang, gender: VoiceGender): number {
   if (g === gender) s += 10;
   else if (g !== null) s -= 10;
   const name = v.name.toLowerCase();
-  if (QUALITY_HINTS.some((q) => name.includes(q))) s += 3;
+  // Voix neuronales (Edge « Natural », Siri, Google…) : nettement plus humaines.
+  if (QUALITY_HINTS.some((q) => name.includes(q))) s += 6;
   if (name.includes('compact') || name.includes('espeak')) s -= 3;
   if (v.default) s += 1;
   return s;

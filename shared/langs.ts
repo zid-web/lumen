@@ -14,16 +14,18 @@ export interface LangMeta {
   locale: string;
   rtl?: true;
   azure: { male: string; female: string };
+  /** Voix « narration » Azure (multilingues, prosodie plus naturelle). Repli sur `azure` si indisponible dans la région. */
+  narrator?: { male: string; female: string };
   deepl: string;
 }
 
 export const LANGS: Record<SupportedLang, LangMeta> = {
-  fr: { label: 'Français', locale: 'fr-FR', azure: { male: 'fr-FR-HenriNeural', female: 'fr-FR-DeniseNeural' }, deepl: 'FR' },
-  en: { label: 'English', locale: 'en-US', azure: { male: 'en-US-GuyNeural', female: 'en-US-JennyNeural' }, deepl: 'EN-US' },
-  es: { label: 'Español', locale: 'es-ES', azure: { male: 'es-ES-AlvaroNeural', female: 'es-ES-ElviraNeural' }, deepl: 'ES' },
-  de: { label: 'Deutsch', locale: 'de-DE', azure: { male: 'de-DE-ConradNeural', female: 'de-DE-KatjaNeural' }, deepl: 'DE' },
-  it: { label: 'Italiano', locale: 'it-IT', azure: { male: 'it-IT-DiegoNeural', female: 'it-IT-ElsaNeural' }, deepl: 'IT' },
-  pt: { label: 'Português', locale: 'pt-BR', azure: { male: 'pt-BR-AntonioNeural', female: 'pt-BR-FranciscaNeural' }, deepl: 'PT-BR' },
+  fr: { label: 'Français', locale: 'fr-FR', azure: { male: 'fr-FR-HenriNeural', female: 'fr-FR-DeniseNeural' }, narrator: { male: 'fr-FR-RemyMultilingualNeural', female: 'fr-FR-VivienneMultilingualNeural' }, deepl: 'FR' },
+  en: { label: 'English', locale: 'en-US', azure: { male: 'en-US-GuyNeural', female: 'en-US-JennyNeural' }, narrator: { male: 'en-US-AndrewMultilingualNeural', female: 'en-US-AvaMultilingualNeural' }, deepl: 'EN-US' },
+  es: { label: 'Español', locale: 'es-ES', azure: { male: 'es-ES-AlvaroNeural', female: 'es-ES-ElviraNeural' }, narrator: { male: 'es-ES-TristanMultilingualNeural', female: 'es-ES-ArabellaMultilingualNeural' }, deepl: 'ES' },
+  de: { label: 'Deutsch', locale: 'de-DE', azure: { male: 'de-DE-ConradNeural', female: 'de-DE-KatjaNeural' }, narrator: { male: 'de-DE-FlorianMultilingualNeural', female: 'de-DE-SeraphinaMultilingualNeural' }, deepl: 'DE' },
+  it: { label: 'Italiano', locale: 'it-IT', azure: { male: 'it-IT-DiegoNeural', female: 'it-IT-ElsaNeural' }, narrator: { male: 'it-IT-GiuseppeMultilingualNeural', female: 'it-IT-IsabellaMultilingualNeural' }, deepl: 'IT' },
+  pt: { label: 'Português', locale: 'pt-BR', azure: { male: 'pt-BR-AntonioNeural', female: 'pt-BR-FranciscaNeural' }, narrator: { male: 'pt-BR-MacerioMultilingualNeural', female: 'pt-BR-ThalitaMultilingualNeural' }, deepl: 'PT-BR' },
   nl: { label: 'Nederlands', locale: 'nl-NL', azure: { male: 'nl-NL-MaartenNeural', female: 'nl-NL-ColetteNeural' }, deepl: 'NL' },
   pl: { label: 'Polski', locale: 'pl-PL', azure: { male: 'pl-PL-MarekNeural', female: 'pl-PL-ZofiaNeural' }, deepl: 'PL' },
   ru: { label: 'Русский', locale: 'ru-RU', azure: { male: 'ru-RU-DmitryNeural', female: 'ru-RU-SvetlanaNeural' }, deepl: 'RU' },

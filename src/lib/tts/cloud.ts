@@ -36,7 +36,7 @@ function base64ToBlob(b64: string, mime: string): Blob {
 }
 
 export async function audioCacheKey(req: TtsSynthesisRequest, provider: TtsProviderId): Promise<string> {
-  return sha256([provider, req.lang, req.gender, req.speed.toFixed(2), req.pitch, req.text].join('|'));
+  return sha256(['v2', provider, req.lang, req.gender, req.speed.toFixed(2), req.pitch, req.text].join('|'));
 }
 
 /**

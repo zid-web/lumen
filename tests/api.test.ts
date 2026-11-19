@@ -89,10 +89,28 @@ describe('api/translate', () => {
   });
 });
 
+describe('ElevenLabs', () => {
+  it('envoie la voix de conteur, les réglages narration et le contexte', async () => {
+    const { ElevenLabsTtsProvider } = await import('../api/_lib/providers/elevenlabsTts');
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ audio_base64: 'AAAA', alignment: { characters: [...'Bonjour'], character_start_times_seconds: [0, 0, 0, 0, 0, 0, 0], character_end_times_seconds: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.5] } }), { status: 200 }),
+    );
+    const p = new ElevenLabsTtsProvider('k', 'eleven_multilingual_v2', { male: 'JBFqnCBsd6RMkjVDRZzb', female: 'f' });
+    const r = await p.synthesize({ text: 'Bonjour', lang: 'fr', gender: 'male', speed: 1, pitch: 0, context: { previous: 'Avant.', next: 'Après.' } });
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toContain('/JBFqnCBsd6RMkjVDRZzb/with-timestamps');
+    expect(JSON.parse(String(init?.body))).toMatchObject({ previous_text: 'Avant.', next_text: 'Après.', voice_settings: { use_speaker_boost: true } });
+    expect(r.wordBoundaries[0]).toMatchObject({ word: 'Bonjour', charStart: 0 });
+    fetchMock.mockRestore();
+  });
+});
+
 describe('providers', () => {
   it('construit un SSML échappé avec prosodie', () => {
     const ssml = buildSsml({ text: 'Tom & <Jerry>', lang: 'fr', gender: 'male', speed: 1.25, pitch: -4 });
-    expect(ssml).toContain('fr-FR-HenriNeural');
+    expect(ssml).toContain('fr-FR-RemyMultilingualNeural');
+    expect(buildSsml({ text: 'x', lang: 'pl', gender: 'female', speed: 1, pitch: 0 })).toContain('pl-PL-ZofiaNeural');
+    expect(buildSsml({ text: 'x', lang: 'fr', gender: 'male', speed: 1, pitch: 0 }, 'fr-FR-HenriNeural')).toContain('fr-FR-HenriNeural');
     expect(ssml).toContain('Tom &amp; &lt;Jerry&gt;');
     expect(ssml).toContain('rate="+25%" pitch="-4st"');
   });
