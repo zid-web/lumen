@@ -1,0 +1,9 @@
+/** SHA-256 hexadécimal (WebCrypto). */
+export async function sha256(input: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+export function uid(): string {
+  return crypto.randomUUID();
+}
