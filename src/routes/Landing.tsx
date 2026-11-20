@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { domAnimation, LazyMotion } from 'framer-motion';
-import { ArrowRight, BookOpen, Check, Download, Languages, Mail, Smartphone, Volume2, WifiOff } from 'lucide-react';
+import { ArrowRight, BookOpen, Check, Download, Languages, Smartphone, Volume2, WifiOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Logo } from '@/components/Logo';
 import { Reveal } from '@/components/landing/Reveal';
@@ -15,16 +15,6 @@ const BADGES = [
   { icon: Languages, label: '12+ langues' },
 ];
 
-function GithubIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
-      <path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.7 5.38-5.27 5.67.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z" />
-    </svg>
-  );
-}
-
-const GITHUB_URL = 'https://github.com/';
-const CONTACT = 'mailto:contact@lumen.app';
 
 function Header() {
   return (
@@ -212,12 +202,9 @@ function Footer() {
           <Link to="/privacy" className="hover:text-fg">
             Confidentialité
           </Link>
-          <a href={GITHUB_URL} className="inline-flex items-center gap-1.5 hover:text-fg" rel="noopener noreferrer" target="_blank" aria-label="Code source sur GitHub (nouvel onglet)">
-            <GithubIcon className="size-4" /> GitHub
-          </a>
-          <a href={CONTACT} className="inline-flex items-center gap-1.5 hover:text-fg" aria-label="Nous contacter par e-mail">
-            <Mail className="size-4" aria-hidden /> Contact
-          </a>
+          <Link to="/installer" className="hover:text-fg">
+            Installer
+          </Link>
         </nav>
       </div>
     </footer>

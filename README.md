@@ -36,4 +36,3 @@ Validation Zod, corps ≤ 64 Ko et texte ≤ 5000 caractères, CORS limité à `
 2. Renseigner les variables de `.env.example` (au minimum `TTS_PROVIDER`, `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION`, `TRANSLATION_PROVIDER`, `DEEPL_API_KEY`, `ALLOWED_ORIGINS`).
 3. Vérifier `GET /api/health`.
 
-À personnaliser : `GITHUB_URL` et `CONTACT` dans `src/routes/Landing.tsx`.
