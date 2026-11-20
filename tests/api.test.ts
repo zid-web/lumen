@@ -32,6 +32,15 @@ describe('api/health', () => {
   });
 });
 
+describe('provider effectif', () => {
+  it('annonce le provider de secours configuré quand le principal n’a pas de clé', async () => {
+    vi.stubEnv('TTS_PROVIDER', 'azure');
+    vi.stubEnv('ELEVENLABS_API_KEY', 'k');
+    const body = (await (await health(req('/api/health', { method: 'GET' }))).json()) as { tts: string };
+    expect(body.tts).toBe('elevenlabs');
+  });
+});
+
 describe('api/tts', () => {
   it('refuse une origine non autorisée', async () => {
     vi.stubEnv('ALLOWED_ORIGINS', 'https://lumen.app');

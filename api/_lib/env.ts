@@ -30,11 +30,16 @@ export function azureSpeechConfigured(env: Env): env is Env & { AZURE_SPEECH_KEY
   return Boolean(env.AZURE_SPEECH_KEY && env.AZURE_SPEECH_REGION);
 }
 
-/** Provider TTS effectif : celui demandé s'il est configuré, sinon `webspeech` (client). */
+/**
+ * Provider TTS effectif : le premier configuré dans l'ordre de préférence
+ * (même ordre que la chaîne de secours de /api/tts), sinon `webspeech` (client).
+ */
 export function effectiveTtsProvider(env: Env): Env['TTS_PROVIDER'] {
-  if (env.TTS_PROVIDER === 'azure' && azureSpeechConfigured(env)) return 'azure';
-  if (env.TTS_PROVIDER === 'elevenlabs' && env.ELEVENLABS_API_KEY) return 'elevenlabs';
-  return 'webspeech';
+  if (env.TTS_PROVIDER === 'webspeech') return 'webspeech';
+  const azure = azureSpeechConfigured(env);
+  const eleven = Boolean(env.ELEVENLABS_API_KEY);
+  const order = env.TTS_PROVIDER === 'azure' ? (['azure', 'elevenlabs'] as const) : (['elevenlabs', 'azure'] as const);
+  return order.find((p) => (p === 'azure' ? azure : eleven)) ?? 'webspeech';
 }
 
 export function effectiveTranslationProvider(env: Env): Env['TRANSLATION_PROVIDER'] {
