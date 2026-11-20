@@ -8,6 +8,8 @@ interface LibraryState {
   load: () => Promise<void>;
   add: (book: Book) => Promise<void>;
   remove: (id: string) => Promise<void>;
+  /** Supprime de cet appareil sans créer de suppression à propager (appelé par la synchro). */
+  removeLocal: (id: string) => Promise<void>;
 }
 
 export function toMeta(b: Book): BookMeta {
@@ -43,12 +45,15 @@ export const useLibrary = create<LibraryState>()((set, get) => ({
     set({ books: [toMeta(book), ...get().books.filter((b) => b.id !== book.id)] });
   },
   async remove(id) {
+    await get().removeLocal(id);
+    useSettings.getState().forgetBook(id);
+  },
+  async removeLocal(id) {
     const d = await db();
     const tx = d.transaction(['books', 'meta'], 'readwrite');
     await tx.objectStore('books').delete(id);
     await tx.objectStore('meta').delete(id);
     await tx.done;
-    useSettings.getState().forgetBook(id);
     set({ books: get().books.filter((b) => b.id !== id) });
   },
 }));

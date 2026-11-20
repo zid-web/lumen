@@ -77,8 +77,8 @@ export default function Library() {
           <p className="mt-1 text-muted">{books.length} livre{books.length > 1 ? 's' : ''} sur cet appareil</p>
         </div>
         <div className="flex gap-2">
-          <input ref={fileRef} type="file" accept=".epub,.txt,.md,application/epub+zip,text/plain,text/markdown" className="sr-only" onChange={(e) => void onFile(e.target.files?.[0])} tabIndex={-1} aria-hidden />
-          <Button onClick={() => fileRef.current?.click()} disabled={busy} aria-label="Importer un fichier EPUB, TXT ou Markdown">
+          <input ref={fileRef} type="file" accept=".epub,.pdf,.txt,.md,application/epub+zip,application/pdf,text/plain,text/markdown" className="sr-only" onChange={(e) => void onFile(e.target.files?.[0])} tabIndex={-1} aria-hidden />
+          <Button onClick={() => fileRef.current?.click()} disabled={busy} aria-label="Importer un fichier EPUB, PDF, TXT ou Markdown">
             {busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <FileUp className="size-4" aria-hidden />}
             Importer
           </Button>
@@ -103,7 +103,7 @@ export default function Library() {
         <div className="mt-16 rounded-3xl border border-dashed border-line p-10 text-center">
           <BookOpen className="mx-auto size-8 text-subtle" aria-hidden />
           <h2 className="mt-4 text-lg font-semibold">Votre bibliothèque est vide</h2>
-          <p className="mt-2 text-muted">Importez un EPUB ou un fichier texte, ou collez un article pour l’écouter.</p>
+          <p className="mt-2 text-muted">Importez un EPUB, un PDF ou un fichier texte, ou collez un article pour l’écouter.</p>
         </div>
       ) : (
         <ul className="mt-8 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">

@@ -28,6 +28,12 @@ npm run build          # typecheck front + API, puis build PWA
 Clé de cache audio = SHA-256(provider + langue + voix + vitesse + hauteur + texte).
 Chaîne de secours : provider choisi → autre provider configuré → 503 → Web Speech côté client (2 échecs ⇒ Web Speech pour la session, réinitialisé au retour en ligne).
 
+## Fonctions
+- **Import** : EPUB, PDF (texte, pas les scans), TXT/Markdown, texte collé.
+- **Marque-pages** par paragraphe, liste par livre.
+- **Traduction au toucher** : appui long / double-clic / sélection → bulle de traduction + écoute.
+- **Synchronisation sans compte** : un code de 20 caractères relie les appareils. Livres, progression, marque-pages et réglages sont chiffrés (AES-GCM, clé dérivée du code par HKDF) avant l'envoi ; `/api/sync` ne stocke que des blobs opaques dans Upstash (TTL 180 jours).
+
 ## Sécurité API
 Validation Zod, corps ≤ 64 Ko et texte ≤ 5000 caractères, CORS limité à `ALLOWED_ORIGINS` (+ same-origin, + localhost hors prod), rate limit par IP (Upstash si configuré, sinon fenêtre glissante mémoire), clés uniquement en variables d'env, en-têtes de sécurité + CSP dans `vercel.json`.
 

@@ -11,6 +11,7 @@ const run = handler(readEnv, async (req, { env }) => {
     tts: effectiveTtsProvider(env),
     translation: effectiveTranslationProvider(env),
     rateLimit: env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN ? 'upstash' : 'memory',
+    sync: Boolean(env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN),
     time: new Date().toISOString(),
   };
   return json(body, { headers: { 'Cache-Control': 'public, max-age=60' } });

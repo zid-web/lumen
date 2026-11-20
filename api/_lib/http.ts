@@ -6,6 +6,7 @@ const STATUS: Record<ApiErrorCode, number> = {
   BAD_REQUEST: 400,
   FORBIDDEN: 403,
   METHOD_NOT_ALLOWED: 405,
+  NOT_FOUND: 404,
   PAYLOAD_TOO_LARGE: 413,
   RATE_LIMITED: 429,
   PROVIDER_ERROR: 502,
@@ -41,8 +42,8 @@ export function resolveCors(req: Request, env: Env): { allowed: boolean; headers
 
   if (allowed) {
     headers['Access-Control-Allow-Origin'] = origin;
-    headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS';
-    headers['Access-Control-Allow-Headers'] = 'Content-Type';
+    headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
+    headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Sync-Id';
     headers['Access-Control-Max-Age'] = '86400';
   }
   return { allowed, headers };
@@ -63,14 +64,14 @@ export function errorResponse(err: unknown, headers: Record<string, string> = {}
   return json({ error: { code: 'PROVIDER_ERROR', message: 'Erreur interne' } }, { status: 500, headers });
 }
 
-export async function parseBody<T>(req: Request, schema: ZodType<T, ZodTypeDef, unknown>): Promise<T> {
+export async function parseBody<T>(req: Request, schema: ZodType<T, ZodTypeDef, unknown>, maxBytes = MAX_BODY_BYTES): Promise<T> {
   const len = Number(req.headers.get('content-length') ?? '0');
-  if (len > MAX_BODY_BYTES) throw new ApiError('PAYLOAD_TOO_LARGE', 'Requête trop volumineuse');
+  if (len > maxBytes) throw new ApiError('PAYLOAD_TOO_LARGE', 'Requête trop volumineuse');
   if (!(req.headers.get('content-type') ?? '').includes('application/json')) {
     throw new ApiError('BAD_REQUEST', 'Content-Type application/json requis');
   }
   const raw = await req.text();
-  if (raw.length > MAX_BODY_BYTES) throw new ApiError('PAYLOAD_TOO_LARGE', 'Requête trop volumineuse');
+  if (raw.length > maxBytes) throw new ApiError('PAYLOAD_TOO_LARGE', 'Requête trop volumineuse');
   let data: unknown;
   try {
     data = JSON.parse(raw);

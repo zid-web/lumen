@@ -7,6 +7,7 @@ import { Logo } from '@/components/Logo';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
 import { fetchHealth } from '@/lib/health';
+import { startAutoSync } from '@/lib/sync/engine';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false, staleTime: 5 * 60_000, networkMode: 'offlineFirst' } },
@@ -54,6 +55,8 @@ export default function AppLayout() {
   useEffect(() => {
     void fetchHealth();
   }, [online]);
+
+  useEffect(() => startAutoSync(), []);
 
   const nav = (to: string, label: string, Icon: typeof Library, end = false) => (
     <NavLink

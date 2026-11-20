@@ -5,9 +5,10 @@ import type { TtsProviderId } from './tts/types';
 export interface ClientHealth {
   tts: TtsProviderId;
   translation: TranslationProviderId;
+  sync: boolean;
 }
 
-const OFFLINE: ClientHealth = { tts: 'webspeech', translation: 'none' };
+const OFFLINE: ClientHealth = { tts: 'webspeech', translation: 'none', sync: false };
 let current: ClientHealth = OFFLINE;
 let cloud: CloudTtsProvider | null = null;
 let inflight: Promise<ClientHealth> | null = null;
@@ -20,7 +21,7 @@ export function fetchHealth(): Promise<ClientHealth> {
       const d = (await r.json()) as Partial<ClientHealth>;
       const tts: TtsProviderId = d.tts === 'azure' || d.tts === 'elevenlabs' ? d.tts : 'webspeech';
       const translation: TranslationProviderId = d.translation === 'deepl' || d.translation === 'azure' ? d.translation : 'none';
-      return { tts, translation };
+      return { tts, translation, sync: d.sync === true };
     })
     .catch(() => OFFLINE)
     .then((h) => {

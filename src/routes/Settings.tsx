@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Trash2 } from 'lucide-react';
+import { SyncCard } from '@/components/app/SyncCard';
 import { VoiceSettingsForm } from '@/components/reader/VoiceSettings';
 import { Button } from '@/components/ui/button';
 import { Range } from '@/components/ui/range';
@@ -40,6 +41,10 @@ export default function Settings() {
 
       <Card title="Voix et langue">
         <VoiceSettingsForm />
+      </Card>
+
+      <Card title="Synchronisation">
+        <SyncCard available={health.data?.sync} />
       </Card>
 
       <Card title="Lecture">

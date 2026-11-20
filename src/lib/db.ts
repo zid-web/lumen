@@ -12,7 +12,7 @@ export interface BookMeta {
   title: string;
   author: string;
   lang: SupportedLang;
-  source: 'sample' | 'txt' | 'epub' | 'paste';
+  source: 'sample' | 'txt' | 'epub' | 'pdf' | 'paste';
   chapterCount: number;
   paragraphCount: number;
   addedAt: number;

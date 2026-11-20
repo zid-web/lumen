@@ -25,6 +25,7 @@
     "idb": "^8.0.4",
     "lucide-react": "^1.76.0",
     "microsoft-cognitiveservices-speech-sdk": "^1.53.0",
+    "pdfjs-dist": "^4.10.38",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.30.6",

@@ -104,6 +104,7 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules/epubjs') || id.includes('node_modules/jszip')) return 'epub';
+          if (id.includes('node_modules/pdfjs-dist')) return 'pdf';
           if (id.includes('node_modules/react-dom') || id.includes('node_modules/scheduler') || /node_modules\/react\//.test(id)) return 'react';
           return undefined;
         },

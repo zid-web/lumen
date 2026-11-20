@@ -68,15 +68,30 @@ export const HealthResponseSchema = z.object({
   tts: TtsProviderIdSchema,
   translation: TranslationProviderIdSchema,
   rateLimit: z.enum(['upstash', 'memory']),
+  /** Synchronisation entre appareils disponible (nécessite Upstash). */
+  sync: z.boolean(),
   time: z.string(),
 });
 export type HealthResponse = z.infer<typeof HealthResponseSchema>;
 
 export const ApiErrorSchema = z.object({
   error: z.object({
-    code: z.enum(['BAD_REQUEST', 'FORBIDDEN', 'RATE_LIMITED', 'PROVIDER_UNAVAILABLE', 'PROVIDER_ERROR', 'METHOD_NOT_ALLOWED', 'PAYLOAD_TOO_LARGE']),
+    code: z.enum(['BAD_REQUEST', 'FORBIDDEN', 'RATE_LIMITED', 'PROVIDER_UNAVAILABLE', 'PROVIDER_ERROR', 'METHOD_NOT_ALLOWED', 'PAYLOAD_TOO_LARGE', 'NOT_FOUND']),
     message: z.string(),
   }),
 });
 export type ApiErrorCode = z.infer<typeof ApiErrorSchema>['error']['code'];
 
+
+// --- Synchronisation chiffrée entre appareils ---------------------------------
+/** Identifiant dérivé du code de synchro (le serveur ne voit jamais le code ni les données en clair). */
+export const SyncIdSchema = z.string().regex(/^[a-f0-9]{64}$/, 'Identifiant de synchro invalide');
+export const SyncItemSchema = z.string().regex(/^(state|book:[A-Za-z0-9-]{1,64})$/, 'Élément de synchro invalide');
+export const SYNC_MAX_STATE_CHARS = 400_000;
+export const SYNC_MAX_BOOK_CHARS = 1_400_000;
+export const SyncPutSchema = z
+  .object({ item: SyncItemSchema, data: z.string().min(1).max(SYNC_MAX_BOOK_CHARS), updatedAt: z.number().int().nonnegative() })
+  .refine((v) => v.item !== 'state' || v.data.length <= SYNC_MAX_STATE_CHARS, { message: 'État de synchro trop volumineux', path: ['data'] });
+export type SyncPut = z.infer<typeof SyncPutSchema>;
+export const SyncRecordSchema = z.object({ data: z.string(), updatedAt: z.number() });
+export type SyncRecord = z.infer<typeof SyncRecordSchema>;

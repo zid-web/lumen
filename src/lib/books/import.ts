@@ -48,11 +48,23 @@ export async function importFile(file: File, fallbackLang: SupportedLang): Promi
       throw new ImportError('EPUB illisible ou protégé (DRM).');
     }
   }
+  if (name.endsWith('.pdf') || file.type === 'application/pdf') {
+    const { parsePdf, PdfNoTextError } = await import('./pdf');
+    try {
+      const pdf = await parsePdf(await file.arrayBuffer());
+      const title = pdf.title || titleFromFilename(file.name);
+      return build('pdf', { title, author: pdf.author, chapters: parsePlainText(pdf.text, title) }, fallbackLang);
+    } catch (e) {
+      if (e instanceof ImportError) throw e;
+      if (e instanceof PdfNoTextError) throw new ImportError('Ce PDF est une image (scan) : il ne contient pas de texte lisible. Passez-le d’abord dans un outil de reconnaissance de texte (OCR).');
+      throw new ImportError('PDF illisible ou protégé par mot de passe.');
+    }
+  }
   if (name.endsWith('.txt') || name.endsWith('.md') || file.type.startsWith('text/')) {
     const title = titleFromFilename(file.name);
     return build('txt', { title, author: '', chapters: parsePlainText(await file.text(), title) }, fallbackLang);
   }
-  throw new ImportError('Format non pris en charge. Utilisez .epub, .txt ou .md.');
+  throw new ImportError('Format non pris en charge. Utilisez .epub, .pdf, .txt ou .md.');
 }
 
 export function importPaste(text: string, title: string, fallbackLang: SupportedLang): Book {
