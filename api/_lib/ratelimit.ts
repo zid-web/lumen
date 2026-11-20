@@ -37,7 +37,7 @@ export function createMemoryLimiter(max: number, windowMs: number, now: () => nu
 const cache = new Map<string, Limiter>();
 
 export async function getLimiter(env: Env, name: string, max: number, windowSec: number): Promise<Limiter> {
-  const key = `${name}:${max}:${windowSec}`;
+  const key = `${name}:${max}:${windowSec}:${env.UPSTASH_REDIS_REST_URL ?? 'memory'}`;
   const existing = cache.get(key);
   if (existing) return existing;
 
@@ -50,11 +50,23 @@ export async function getLimiter(env: Env, name: string, max: number, windowSec:
       prefix: `lumen:${name}`,
       analytics: false,
     });
+    // Si Upstash est injoignable ou mal configuré, on ne bloque pas le service :
+    // repli sur le compteur mémoire (best effort) et avertissement dans les logs.
+    const fallback = createMemoryLimiter(max, windowSec * 1000);
+    let warned = false;
     limiter = {
       kind: 'upstash',
       async limit(id) {
-        const r = await rl.limit(id);
-        return { success: r.success, limit: r.limit, remaining: r.remaining, reset: r.reset };
+        try {
+          const r = await rl.limit(id);
+          return { success: r.success, limit: r.limit, remaining: r.remaining, reset: r.reset };
+        } catch (err) {
+          if (!warned) {
+            warned = true;
+            console.error('[ratelimit] Upstash indisponible, repli mémoire :', err instanceof Error ? err.message : err);
+          }
+          return fallback.limit(id);
+        }
       },
     };
   } else {

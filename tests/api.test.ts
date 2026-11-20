@@ -77,6 +77,19 @@ describe('api/tts', () => {
   });
 });
 
+describe('rate limit Upstash', () => {
+  it('ne bloque pas le service si Upstash refuse le token', async () => {
+    vi.stubEnv('UPSTASH_REDIS_REST_URL', 'https://fake.upstash.io');
+    vi.stubEnv('UPSTASH_REDIS_REST_TOKEN', 'mauvais');
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ error: 'WRONGPASS invalid or missing auth token' }), { status: 401 }));
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const res = await translate(req('/api/translate', { body: { texts: ['Bonjour'], target: 'en' } }));
+    expect(res.status).toBe(200);
+    fetchMock.mockRestore();
+    err.mockRestore();
+  });
+});
+
 describe('api/translate', () => {
   it('passthrough quand la traduction est désactivée', async () => {
     const res = await translate(req('/api/translate', { body: { texts: ['Bonjour'], target: 'en' } }));
