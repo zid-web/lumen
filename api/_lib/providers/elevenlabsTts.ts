@@ -33,6 +33,9 @@ export function charsToWords(a: z.infer<typeof AlignmentSchema>): { word: string
   return words;
 }
 
+/** Modèles qui acceptent le paramètre language_code. */
+export const supportsLanguageCode = (model: string) => /(turbo|flash)_v2_5|eleven_v3/.test(model);
+
 /** Voix standard d'ElevenLabs (George, Lily), utilisables sur toutes les offres. */
 const DEFAULT_VOICES = { male: 'JBFqnCBsd6RMkjVDRZzb', female: 'pFZP5JQG7iQjIQuC4Bku' } as const;
 
@@ -66,7 +69,8 @@ export class ElevenLabsTtsProvider implements ServerTtsProvider {
       body: JSON.stringify({
         text: req.text,
         model_id: this.model,
-        language_code: req.lang,
+        // Seuls certains modèles acceptent language_code (multilingual_v2 le refuse en 400).
+        ...(supportsLanguageCode(this.model) ? { language_code: req.lang } : {}),
         // ElevenLabs accepte 0.7..1.2 ; au-delà, le client applique playbackRate.
         // Réglages « livre audio » : plus d'expressivité, timbre fidèle.
         voice_settings: { stability: 0.42, similarity_boost: 0.8, style: 0.2, use_speaker_boost: true, speed: Math.min(1.2, Math.max(0.7, req.speed)) },
@@ -75,7 +79,11 @@ export class ElevenLabsTtsProvider implements ServerTtsProvider {
       }),
       ...(signal ? { signal } : {}),
     });
-    if (!res.ok) throw new ProviderError('elevenlabs', `HTTP ${res.status}`, res.status >= 500 || res.status === 429, res.status);
+    if (!res.ok) {
+      // Message d'erreur ElevenLabs (sans secret) pour le diagnostic dans les logs Vercel.
+      const detail = (await res.text().catch(() => '')).slice(0, 300);
+      throw new ProviderError('elevenlabs', `HTTP ${res.status} ${detail}`, res.status >= 500 || res.status === 429, res.status);
+    }
     const data = ResponseSchema.parse(await res.json());
     const words = data.alignment ? charsToWords(data.alignment) : [];
     const last = words.at(-1);

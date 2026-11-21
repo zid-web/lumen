@@ -163,7 +163,10 @@ describe('ElevenLabs', () => {
     const r = await p.synthesize({ text: 'Bonjour', lang: 'fr', gender: 'male', speed: 1, pitch: 0, context: { previous: 'Avant.', next: 'Après.' } });
     const [url, init] = fetchMock.mock.calls[0]!;
     expect(String(url)).toContain('/JBFqnCBsd6RMkjVDRZzb/with-timestamps');
-    expect(JSON.parse(String(init?.body))).toMatchObject({ previous_text: 'Avant.', next_text: 'Après.', voice_settings: { use_speaker_boost: true } });
+    const sent = JSON.parse(String(init?.body));
+    expect(sent).toMatchObject({ previous_text: 'Avant.', next_text: 'Après.', voice_settings: { use_speaker_boost: true } });
+    // multilingual_v2 refuse language_code : il ne doit pas être envoyé.
+    expect(sent.language_code).toBeUndefined();
     expect(r.wordBoundaries[0]).toMatchObject({ word: 'Bonjour', charStart: 0 });
     fetchMock.mockRestore();
   });
