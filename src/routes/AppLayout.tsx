@@ -6,6 +6,7 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { Logo } from '@/components/Logo';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
+import { UPDATED_FLAG } from '@/lib/autoUpdate';
 import { fetchHealth } from '@/lib/health';
 import { startAutoSync } from '@/lib/sync/engine';
 
@@ -29,18 +30,46 @@ function useOnline(): boolean {
 }
 
 function UpdateToast() {
-  const [apply, setApply] = useState<(() => void) | null>(null);
+  const [pending, setPending] = useState(false);
+  const [updated, setUpdated] = useState(() => {
+    try {
+      return sessionStorage.getItem(UPDATED_FLAG) === '1';
+    } catch {
+      return false;
+    }
+  });
   useEffect(() => {
-    const h = (e: Event) => setApply(() => (e as CustomEvent<() => void>).detail);
-    window.addEventListener('lumen:sw-update', h);
-    return () => window.removeEventListener('lumen:sw-update', h);
+    const h = () => setPending(document.documentElement.dataset.playing === 'true');
+    window.addEventListener('lumen:sw-update-pending', h);
+    return () => window.removeEventListener('lumen:sw-update-pending', h);
   }, []);
-  if (!apply) return null;
+  useEffect(() => {
+    if (!updated) return;
+    // L'indicateur n'est effacé qu'après affichage (résiste à un double rechargement).
+    const t = setTimeout(() => {
+      setUpdated(false);
+      try {
+        sessionStorage.removeItem(UPDATED_FLAG);
+      } catch {
+        /* ignore */
+      }
+    }, 3500);
+    return () => clearTimeout(t);
+  }, [updated]);
+
+  if (updated) {
+    return (
+      <div role="status" className="fixed inset-x-4 top-4 z-50 mx-auto w-fit rounded-full border border-line bg-surface px-5 py-2.5 text-sm shadow-2xl">
+        ✨ Lumen a été mis à jour
+      </div>
+    );
+  }
+  if (!pending) return null;
   return (
     <div role="status" className="fixed inset-x-4 top-4 z-50 mx-auto flex max-w-md items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-3 pl-5 shadow-2xl">
-      <span className="text-sm">Une nouvelle version est disponible.</span>
-      <Button size="sm" onClick={apply} aria-label="Mettre à jour Lumen maintenant">
-        Mettre à jour
+      <span className="text-sm">Nouvelle version prête : installée à la prochaine pause.</span>
+      <Button size="sm" variant="secondary" onClick={() => window.dispatchEvent(new Event('lumen:sw-apply-now'))} aria-label="Mettre à jour Lumen maintenant">
+        Maintenant
       </Button>
     </div>
   );

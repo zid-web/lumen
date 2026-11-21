@@ -7,4 +7,8 @@ export const appPlayer = new TtsController({ getVoice: voiceSettings, getCloud: 
 
 if (typeof window !== 'undefined') {
   window.addEventListener('online', () => appPlayer.resetDegradation());
+  // Utilisé par la mise à jour automatique : on n'interrompt jamais une écoute.
+  appPlayer.store.subscribe((s) => {
+    document.documentElement.dataset.playing = String(s.status === 'playing' || s.status === 'loading');
+  });
 }
