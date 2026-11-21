@@ -77,3 +77,17 @@ describe('import de livres', () => {
     expect(detectLang('ok', 'it')).toBe('it');
   });
 });
+
+describe('EPUB : pages annexes', async () => {
+  const { isFrontMatter } = await import('../src/lib/books/epub');
+  const toc = new Set(['the three farmers', 'mr. fox', 'the shooting']);
+  it('écarte sommaire, copyright et « books by »', () => {
+    expect(isFrontMatter({ title: 'Contents', paragraphs: ['x'] }, toc)).toBe(true);
+    expect(isFrontMatter({ title: 'Puffin Books by Roald Dahl', paragraphs: ['x'] }, toc)).toBe(true);
+    expect(isFrontMatter({ title: 'Mentions', paragraphs: ['Published 1970. All rights reserved. ISBN 978-0-14-032872-1'] }, toc)).toBe(true);
+    expect(isFrontMatter({ title: 'Index', paragraphs: ['1. The Three Farmers', '2. Mr. Fox', '3. The Shooting'] }, toc)).toBe(true);
+  });
+  it('garde les vrais chapitres', () => {
+    expect(isFrontMatter({ title: '1. The Three Farmers', paragraphs: ['Down in the valley there were three farms.', 'They were rich.'] }, toc)).toBe(false);
+  });
+});
