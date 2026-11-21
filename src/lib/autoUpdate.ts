@@ -14,14 +14,29 @@ export function startAutoUpdate(): void {
   if (!('serviceWorker' in navigator)) return;
   void import('virtual:pwa-register').then(({ registerSW }) => {
     let pending = false;
+    let reloading = false;
     const apply = () => {
+      if (reloading) return;
+      reloading = true;
       try {
         sessionStorage.setItem(UPDATED_FLAG, '1');
       } catch {
         /* navigation privée */
       }
-      void updateSW(true); // active la nouvelle version puis recharge la page
+      // Une nouvelle version déjà active (skipWaiting) : un simple rechargement suffit.
+      if (activated) window.location.reload();
+      else void updateSW(true);
     };
+    // Première installation : pas de « mise à jour » à signaler.
+    const hadController = Boolean(navigator.serviceWorker.controller);
+    let activated = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController) return;
+      activated = true;
+      pending = true;
+      window.dispatchEvent(new CustomEvent('lumen:sw-update-pending'));
+      applyWhenIdle();
+    });
     const applyWhenIdle = () => {
       if (!pending) return;
       if (isPlaying()) return; // réessayé à la prochaine pause (voir observer ci-dessous)

@@ -85,6 +85,10 @@ export default defineConfig({
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//],
         cleanupOutdatedCaches: true,
+        // La nouvelle version prend le contrôle seule, sans attendre l'ancienne page
+        // (débloque aussi les anciennes installations qui attendaient un clic).
+        skipWaiting: true,
+        clientsClaim: true,
         // L'audio et les traductions sont mis en cache dans IndexedDB par l'app, pas par le SW.
         runtimeCaching: [
           {
