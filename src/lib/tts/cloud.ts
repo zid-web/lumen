@@ -36,7 +36,7 @@ function base64ToBlob(b64: string, mime: string): Blob {
 }
 
 export async function audioCacheKey(req: TtsSynthesisRequest, provider: TtsProviderId): Promise<string> {
-  return sha256(['v2', provider, req.lang, req.gender, req.speed.toFixed(2), req.pitch, req.text].join('|'));
+  return sha256(['v3', req.engine ?? 'auto', provider, req.lang, req.gender, req.speed.toFixed(2), req.pitch, req.text].join('|'));
 }
 
 /**
@@ -92,7 +92,10 @@ export class CloudTtsProvider implements TtsProvider {
     if (!isTtsResponse(data)) throw new TtsHttpError(502, 'BAD_RESPONSE', 'Réponse TTS invalide');
 
     const blob = base64ToBlob(data.audioBase64, data.mime);
-    void putCachedAudio({
+    // Si le serveur a dû se replier sur un autre moteur (quota…), on ne met pas en cache :
+    // la prochaine lecture retentera le moteur demandé.
+    const fellBack = req.engine !== undefined && req.engine !== 'auto' && data.provider !== req.engine;
+    if (!fellBack) void putCachedAudio({
       key: await audioCacheKey(req, this.id),
       blob,
       wordBoundaries: data.wordBoundaries,

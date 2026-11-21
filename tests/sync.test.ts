@@ -5,7 +5,7 @@ import { decryptJson, deriveSyncKeys, encryptJson, formatSyncCode, generateSyncC
 import { mergeStates, type SyncState } from '../src/lib/sync/merge';
 import { linesToParagraphs, type PdfLine } from '../src/lib/books/pdfText';
 
-const prefs = { gender: 'female', lang: 'fr', speed: 1, pitchLevel: 'medium', translate: false, showOriginal: false, fontScale: 1, autoScroll: true } as const;
+const prefs = { gender: 'female', lang: 'fr', speed: 1, pitchLevel: 'medium', translate: false, showOriginal: false, fontScale: 1, autoScroll: true, engine: 'auto' } as const;
 const state = (p: Partial<SyncState>): SyncState => ({ v: 1, prefs: { ...prefs }, prefsUpdatedAt: 0, positions: {}, bookmarks: [], deletedBooks: {}, books: [], ...p });
 
 describe('fusion de synchro', () => {

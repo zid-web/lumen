@@ -17,6 +17,8 @@ export const TtsRequestSchema = z.object({
   pitch: z.number().int().min(PITCH_MIN).max(PITCH_MAX).default(0),
   /** Paragraphes voisins : donnent au moteur l'intonation d'une lecture continue (ElevenLabs). */
   context: z.object({ previous: z.string().max(1000).optional(), next: z.string().max(1000).optional() }).optional(),
+  /** Moteur souhaité : `auto` suit la configuration du serveur. */
+  engine: z.enum(['auto', 'azure', 'elevenlabs']).optional(),
 });
 export type TtsRequest = z.infer<typeof TtsRequestSchema>;
 
@@ -70,6 +72,10 @@ export const HealthResponseSchema = z.object({
   rateLimit: z.enum(['upstash', 'memory']),
   /** Synchronisation entre appareils disponible (nécessite Upstash). */
   sync: z.boolean(),
+  /** Moteurs serveur disponibles, dans l'ordre par défaut. */
+  engines: z.array(z.enum(['azure', 'elevenlabs'])),
+  /** Caractères ElevenLabs restants ce mois-ci (plafond de sécurité), si configuré. */
+  premiumRemaining: z.number().optional(),
   time: z.string(),
 });
 export type HealthResponse = z.infer<typeof HealthResponseSchema>;

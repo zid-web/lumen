@@ -6,9 +6,11 @@ export interface ClientHealth {
   tts: TtsProviderId;
   translation: TranslationProviderId;
   sync: boolean;
+  engines: ('azure' | 'elevenlabs')[];
+  premiumRemaining?: number;
 }
 
-const OFFLINE: ClientHealth = { tts: 'webspeech', translation: 'none', sync: false };
+const OFFLINE: ClientHealth = { tts: 'webspeech', translation: 'none', sync: false, engines: [] };
 let current: ClientHealth = OFFLINE;
 let cloud: CloudTtsProvider | null = null;
 let inflight: Promise<ClientHealth> | null = null;
@@ -21,7 +23,8 @@ export function fetchHealth(): Promise<ClientHealth> {
       const d = (await r.json()) as Partial<ClientHealth>;
       const tts: TtsProviderId = d.tts === 'azure' || d.tts === 'elevenlabs' ? d.tts : 'webspeech';
       const translation: TranslationProviderId = d.translation === 'deepl' || d.translation === 'azure' ? d.translation : 'none';
-      return { tts, translation, sync: d.sync === true };
+      const engines = Array.isArray(d.engines) ? d.engines.filter((e): e is 'azure' | 'elevenlabs' => e === 'azure' || e === 'elevenlabs') : [];
+      return { tts, translation, sync: d.sync === true, engines, ...(typeof d.premiumRemaining === 'number' ? { premiumRemaining: d.premiumRemaining } : {}) };
     })
     .catch(() => OFFLINE)
     .then((h) => {

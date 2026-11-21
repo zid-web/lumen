@@ -9,11 +9,17 @@ import type { ServerTranslationProvider, ServerTtsProvider } from './types.js';
  * Chaîne TTS ordonnée : provider choisi d'abord, puis les autres configurés en secours.
  * Une chaîne vide signifie « le client doit utiliser Web Speech ».
  */
-export function ttsChain(env: Env): ServerTtsProvider[] {
+export function ttsChain(env: Env, engine: 'auto' | 'azure' | 'elevenlabs' = 'auto'): ServerTtsProvider[] {
   const azure: ServerTtsProvider | null = azureSpeechConfigured(env) ? new AzureTtsProvider(env.AZURE_SPEECH_KEY, env.AZURE_SPEECH_REGION) : null;
   const eleven: ServerTtsProvider | null = env.ELEVENLABS_API_KEY
     ? new ElevenLabsTtsProvider(env.ELEVENLABS_API_KEY, env.ELEVENLABS_MODEL, { male: env.ELEVENLABS_VOICE_MALE, female: env.ELEVENLABS_VOICE_FEMALE })
     : null;
+  if (engine !== 'auto') {
+    const first = engine === 'azure' ? azure : eleven;
+    const other = engine === 'azure' ? eleven : azure;
+    // Moteur demandé d'abord, l'autre en secours (même si le serveur est réglé sur Web Speech).
+    if (first) return [first, other].filter((p): p is ServerTtsProvider => p !== null);
+  }
   switch (env.TTS_PROVIDER) {
     case 'azure':
       return [azure, eleven].filter((p): p is ServerTtsProvider => p !== null);

@@ -16,6 +16,7 @@ export class ProviderError extends Error {
     readonly provider: string,
     message: string,
     readonly retryable = true,
+    readonly status?: number,
   ) {
     super(`[${provider}] ${message}`);
   }

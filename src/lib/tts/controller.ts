@@ -1,7 +1,7 @@
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { SupportedLang, VoiceGender, WordBoundary } from '@shared/langs';
 import { CloudTtsProvider } from './cloud';
-import type { TtsProviderId, TtsSynthesisRequest, TtsSynthesisResult } from './types';
+import type { TtsEngine, TtsProviderId, TtsSynthesisRequest, TtsSynthesisResult } from './types';
 import { webSpeech, webSpeechSupported } from './webspeech';
 
 export type PlayerStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'error';
@@ -30,6 +30,7 @@ export interface VoiceSettings {
   gender: VoiceGender;
   speed: number;
   pitch: number;
+  engine?: TtsEngine;
 }
 
 export interface ControllerHandlers {
@@ -87,7 +88,7 @@ function findBoundary(bounds: WordBoundary[], ms: number): WordBoundary | null {
 }
 
 function sig(req: TtsSynthesisRequest): string {
-  return `${req.lang}|${req.gender}|${req.speed}|${req.pitch}|${req.text}`;
+  return `${req.engine ?? 'auto'}|${req.lang}|${req.gender}|${req.speed}|${req.pitch}|${req.text}`;
 }
 
 /**
@@ -272,7 +273,15 @@ export class TtsController {
     const previous = q.paragraphs[index - 1]?.trim().slice(-600);
     const next = q.paragraphs[index + 1]?.trim().slice(0, 600);
     const context = previous || next ? { ...(previous ? { previous } : {}), ...(next ? { next } : {}) } : undefined;
-    return { text, lang: q.lang, gender: voice.gender, speed: voice.speed, pitch: voice.pitch, ...(context ? { context } : {}) };
+    return {
+      text,
+      lang: q.lang,
+      gender: voice.gender,
+      speed: voice.speed,
+      pitch: voice.pitch,
+      ...(context ? { context } : {}),
+      ...(voice.engine && voice.engine !== 'auto' ? { engine: voice.engine } : {}),
+    };
   }
 
   private async resolveCloud(cloud: CloudTtsProvider, index: number, req: TtsSynthesisRequest): Promise<TtsSynthesisResult | null> {

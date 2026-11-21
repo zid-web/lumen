@@ -7,6 +7,8 @@ const EnvSchema = z.object({
   AZURE_SPEECH_REGION: z.string().optional(),
   ELEVENLABS_API_KEY: z.string().optional(),
   ELEVENLABS_MODEL: z.string().default('eleven_multilingual_v2'),
+  /** Plafond de caractères ElevenLabs par mois (au-delà : repli Azure). */
+  ELEVENLABS_MONTHLY_CHAR_LIMIT: z.coerce.number().int().nonnegative().default(9000),
   ELEVENLABS_VOICE_MALE: z.string().default('JBFqnCBsd6RMkjVDRZzb'),
   ELEVENLABS_VOICE_FEMALE: z.string().default('pFZP5JQG7iQjIQuC4Bku'),
   DEEPL_API_KEY: z.string().optional(),

@@ -7,6 +7,7 @@ import { Select } from '@/components/ui/select';
 import { usePlayer } from '@/hooks/usePlayer';
 import { DEMO_LANGS, DEMO_TEXT, type DemoLang } from '@/lib/demo';
 import { cloudProvider, fetchHealth } from '@/lib/health';
+import type { TtsEngine } from '@/lib/tts/types';
 import { TtsController } from '@/lib/tts/controller';
 import { HighlightedText } from '@/components/HighlightedText';
 
@@ -18,10 +19,14 @@ export function VoiceDemo() {
     const l = navigator.language.slice(0, 2) as DemoLang;
     return DEMO_LANGS.includes(l) ? l : 'fr';
   });
+  const [engines, setEngines] = useState<('azure' | 'elevenlabs')[]>([]);
+  const [engine, setEngine] = useState<TtsEngine>('auto');
   const genderRef = useRef(gender);
   genderRef.current = gender;
+  const engineRef = useRef(engine);
+  engineRef.current = engine;
   const controller = useMemo(
-    () => new TtsController({ getVoice: () => ({ gender: genderRef.current, speed: 1, pitch: 0 }), getCloud: cloudProvider }),
+    () => new TtsController({ getVoice: () => ({ gender: genderRef.current, speed: 1, pitch: 0, engine: engineRef.current }), getCloud: cloudProvider }),
     [],
   );
 
@@ -32,7 +37,7 @@ export function VoiceDemo() {
   const text = DEMO_TEXT[lang];
 
   useEffect(() => {
-    void fetchHealth();
+    void fetchHealth().then((h) => setEngines(h.engines));
     return () => controller.destroy();
   }, [controller]);
 
@@ -41,7 +46,7 @@ export function VoiceDemo() {
   }, [controller, lang, text]);
 
   // Changer de voix pendant la lecture relance immédiatement.
-  useEffect(() => controller.refresh(), [controller, gender]);
+  useEffect(() => controller.refresh(), [controller, gender, engine]);
 
   const active = status === 'playing' || status === 'loading';
 
@@ -68,6 +73,19 @@ export function VoiceDemo() {
           {active ? 'Arrêter' : 'Écouter'}
         </Button>
       </div>
+
+      {engines.length > 1 && (
+        <Segmented<TtsEngine>
+          label="Moteur"
+          className="mt-4"
+          value={engine === 'auto' ? (engines[0] ?? 'azure') : engine}
+          onChange={setEngine}
+          options={[
+            { value: 'azure', label: 'Azure', ariaLabel: 'Comparer avec Azure Neural' },
+            { value: 'elevenlabs', label: 'ElevenLabs ✦', ariaLabel: 'Comparer avec ElevenLabs' },
+          ]}
+        />
+      )}
 
       <p lang={lang} className="mt-7 text-lg leading-relaxed text-fg/90 sm:text-xl">
         <HighlightedText text={text} word={active ? word : null} />

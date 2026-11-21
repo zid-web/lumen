@@ -33,6 +33,9 @@ export function charsToWords(a: z.infer<typeof AlignmentSchema>): { word: string
   return words;
 }
 
+/** Voix standard d'ElevenLabs (George, Lily), utilisables sur toutes les offres. */
+const DEFAULT_VOICES = { male: 'JBFqnCBsd6RMkjVDRZzb', female: 'pFZP5JQG7iQjIQuC4Bku' } as const;
+
 export class ElevenLabsTtsProvider implements ServerTtsProvider {
   readonly id = 'elevenlabs' as const;
 
@@ -43,7 +46,20 @@ export class ElevenLabsTtsProvider implements ServerTtsProvider {
   ) {}
 
   async synthesize(req: TtsRequest, signal?: AbortSignal): Promise<TtsResponse> {
-    const voiceId = this.voices[req.gender];
+    try {
+      return await this.synthesizeWith(req, this.voices[req.gender], signal);
+    } catch (err) {
+      const fallback = DEFAULT_VOICES[req.gender];
+      // Voix de la bibliothèque communautaire refusée (ex. offre gratuite) : voix standard ElevenLabs.
+      if (err instanceof ProviderError && err.status !== undefined && [400, 401, 402, 403, 404].includes(err.status) && this.voices[req.gender] !== fallback) {
+        console.warn(`[elevenlabs] voix ${this.voices[req.gender]} refusée (${err.status}), voix standard`);
+        return this.synthesizeWith(req, fallback, signal);
+      }
+      throw err;
+    }
+  }
+
+  private async synthesizeWith(req: TtsRequest, voiceId: string, signal?: AbortSignal): Promise<TtsResponse> {
     const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}/with-timestamps?output_format=mp3_44100_64`, {
       method: 'POST',
       headers: { 'xi-api-key': this.apiKey, 'Content-Type': 'application/json' },
@@ -59,7 +75,7 @@ export class ElevenLabsTtsProvider implements ServerTtsProvider {
       }),
       ...(signal ? { signal } : {}),
     });
-    if (!res.ok) throw new ProviderError('elevenlabs', `HTTP ${res.status}`, res.status >= 500 || res.status === 429);
+    if (!res.ok) throw new ProviderError('elevenlabs', `HTTP ${res.status}`, res.status >= 500 || res.status === 429, res.status);
     const data = ResponseSchema.parse(await res.json());
     const words = data.alignment ? charsToWords(data.alignment) : [];
     const last = words.at(-1);

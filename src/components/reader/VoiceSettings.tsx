@@ -1,8 +1,10 @@
+import { useEffect, useState } from 'react';
 import { LANGS, SPEED_MAX, SPEED_MIN, SUPPORTED_LANGS } from '@shared/langs';
+import { fetchHealth, type ClientHealth } from '@/lib/health';
 import { Range } from '@/components/ui/range';
 import { Segmented } from '@/components/ui/segmented';
 import { Select } from '@/components/ui/select';
-import type { PitchLevel } from '@/lib/tts/types';
+import type { PitchLevel, TtsEngine } from '@/lib/tts/types';
 import { useSettings } from '@/store/settings';
 
 export const formatSpeed = (v: number) => `${v.toLocaleString('fr-FR', { minimumFractionDigits: v % 1 ? 2 : 1, maximumFractionDigits: 2 })}×`;
@@ -10,6 +12,11 @@ export const formatSpeed = (v: number) => `${v.toLocaleString('fr-FR', { minimum
 /** Réglages voix/langue partagés entre le lecteur et la page Réglages. */
 export function VoiceSettingsForm({ onChange }: { onChange?: () => void }) {
   const s = useSettings();
+  const [health, setHealth] = useState<ClientHealth | null>(null);
+  useEffect(() => {
+    void fetchHealth().then(setHealth);
+  }, []);
+  const engines = health?.engines ?? [];
   const patch = (p: Parameters<typeof s.set>[0]) => {
     s.set(p);
     onChange?.();
@@ -25,6 +32,24 @@ export function VoiceSettingsForm({ onChange }: { onChange?: () => void }) {
           { value: 'male', label: 'Homme', ariaLabel: 'Voix d’homme' },
         ]}
       />
+      {engines.length > 1 && (
+        <div>
+          <Segmented<TtsEngine>
+            label="Moteur de voix"
+            value={s.engine === 'auto' ? (engines[0] ?? 'azure') : s.engine}
+            onChange={(engine) => patch({ engine })}
+            options={[
+              { value: 'azure', label: 'Azure', ariaLabel: 'Moteur Azure Neural' },
+              { value: 'elevenlabs', label: 'ElevenLabs ✦', ariaLabel: 'Moteur ElevenLabs, premium' },
+            ]}
+          />
+          {health?.premiumRemaining !== undefined && (
+            <p className="mt-2 text-xs text-subtle">
+              ElevenLabs : {health.premiumRemaining.toLocaleString('fr-FR')} caractères restants ce mois-ci. Au-delà, Lumen repasse automatiquement sur Azure.
+            </p>
+          )}
+        </div>
+      )}
       <Range label="Vitesse" value={s.speed} min={SPEED_MIN} max={SPEED_MAX} step={0.25} format={formatSpeed} onChange={(speed) => patch({ speed })} />
       <Segmented<PitchLevel>
         label="Hauteur"

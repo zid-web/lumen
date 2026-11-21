@@ -10,7 +10,11 @@ export interface TtsSynthesisRequest {
   pitch: number; // -20..20 (demi-tons)
   /** Paragraphes voisins pour une intonation continue (non inclus dans la clé de cache). */
   context?: { previous?: string; next?: string };
+  /** Moteur souhaité (auto = configuration du serveur). */
+  engine?: TtsEngine;
 }
+
+export type TtsEngine = 'auto' | 'azure' | 'elevenlabs';
 
 export interface TtsSynthesisResult {
   /** Blob URL de l'audio. Absent pour Web Speech (lecture « live » via `speak`). */

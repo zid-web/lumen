@@ -32,6 +32,48 @@ describe('api/health', () => {
   });
 });
 
+describe('ElevenLabs : moteur au choix et plafond mensuel', () => {
+  const elevenOk = () =>
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () =>
+      new Response(JSON.stringify({ audio_base64: 'AAAA', alignment: { characters: ['a'], character_start_times_seconds: [0], character_end_times_seconds: [0.1] } }), { status: 200 }),
+    );
+
+  it('respecte le moteur demandé et coupe ElevenLabs au-delà du plafond', async () => {
+    vi.stubEnv('TTS_PROVIDER', 'azure');
+    vi.stubEnv('ELEVENLABS_API_KEY', 'k');
+    vi.stubEnv('ELEVENLABS_MONTHLY_CHAR_LIMIT', '30');
+    const f = elevenOk();
+    const body = { text: 'Bonjour à tous ici', lang: 'fr', gender: 'female', engine: 'elevenlabs' }; // 18 caractères
+    const ok = await tts(req('/api/tts', { body }));
+    expect(ok.status).toBe(200);
+    expect(((await ok.json()) as { provider: string }).provider).toBe('elevenlabs');
+    const h = (await (await health(req('/api/health', { method: 'GET' }))).json()) as { engines: string[]; premiumRemaining: number };
+    expect(h.engines).toEqual(['elevenlabs']);
+    expect(h.premiumRemaining).toBe(12);
+    // 18 + 18 > 30 : ElevenLabs est retiré, pas d'Azure configuré → 503 (repli navigateur côté client).
+    const blocked = await tts(req('/api/tts', { body }));
+    expect(blocked.status).toBe(503);
+    expect(f).toHaveBeenCalledTimes(1);
+    f.mockRestore();
+  });
+});
+
+describe('ElevenLabs : voix refusée', () => {
+  it('réessaie avec la voix standard si la voix configurée est refusée', async () => {
+    const { ElevenLabsTtsProvider } = await import('../api/_lib/providers/elevenlabsTts');
+    const ok = JSON.stringify({ audio_base64: 'AAAA', alignment: null });
+    const f = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response('{}', { status: 402 }))
+      .mockResolvedValueOnce(new Response(ok, { status: 200 }));
+    const p = new ElevenLabsTtsProvider('k', 'eleven_multilingual_v2', { male: 'communautaire', female: 'communautaire' });
+    const r = await p.synthesize({ text: 'Salut', lang: 'fr', gender: 'female', speed: 1, pitch: 0 });
+    expect(r.provider).toBe('elevenlabs');
+    expect(String(f.mock.calls[1]![0])).toContain('/pFZP5JQG7iQjIQuC4Bku/');
+    f.mockRestore();
+  });
+});
+
 describe('provider effectif', () => {
   it('annonce le provider de secours configuré quand le principal n’a pas de clé', async () => {
     vi.stubEnv('TTS_PROVIDER', 'azure');

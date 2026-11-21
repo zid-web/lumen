@@ -1,5 +1,5 @@
 import type { SupportedLang, VoiceGender } from '@shared/langs';
-import type { PitchLevel } from '../tts/types';
+import type { PitchLevel, TtsEngine } from '../tts/types';
 
 export interface ReadingPosition {
   chapter: number;
@@ -29,6 +29,7 @@ export interface SyncedPrefs {
   showOriginal: boolean;
   fontScale: number;
   autoScroll: boolean;
+  engine: TtsEngine;
 }
 
 export interface SyncState {
