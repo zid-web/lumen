@@ -6,6 +6,8 @@ export interface SyncStore {
   get(syncId: string, item: string): Promise<SyncRecord | null>;
   put(syncId: string, item: string, record: SyncRecord): Promise<void>;
   delete(syncId: string, item: string): Promise<void>;
+  /** Version (horodatage) de l'état : lecture minuscule, utilisée pour la synchro instantanée. */
+  version(syncId: string): Promise<number | null>;
 }
 
 /** Les données inactives expirent après 180 jours (TTL renouvelé à chaque écriture). */
@@ -28,6 +30,11 @@ export async function getSyncStore(env: Env): Promise<SyncStore | null> {
     },
     async put(syncId, item, record) {
       await redis.set(key(syncId, item), JSON.stringify(record), { ex: SYNC_TTL_SECONDS });
+      if (item === 'state') await redis.set(key(syncId, 'version'), String(record.updatedAt), { ex: SYNC_TTL_SECONDS });
+    },
+    async version(syncId) {
+      const v = await redis.get<string>(key(syncId, 'version'));
+      return v ? Number(v) : null;
     },
     async delete(syncId, item) {
       await redis.del(key(syncId, item));
@@ -48,6 +55,9 @@ export function createMemorySyncStore(): SyncStore {
     },
     async delete(s, i) {
       m.delete(key(s, i));
+    },
+    async version(s) {
+      return m.get(key(s, 'state'))?.updatedAt ?? null;
     },
   };
 }

@@ -38,7 +38,22 @@ async function localState(): Promise<SyncState> {
   };
 }
 
+/** JSON à clés triées : deux états identiques donnent la même chaîne. */
+export function stableStringify(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(stableStringify).join(',')}]`;
+  if (v && typeof v === 'object') {
+    return `{${Object.keys(v as object)
+      .sort()
+      .filter((k) => (v as Record<string, unknown>)[k] !== undefined)
+      .map((k) => `${JSON.stringify(k)}:${stableStringify((v as Record<string, unknown>)[k])}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(v);
+}
+
 let running: Promise<void> | null = null;
+/** Version du coffre connue de cet appareil (dernier état lu ou publié). */
+let knownVersion = 0;
 
 /** Synchronise avec le coffre chiffré. Sans effet si la synchro n'est pas activée. */
 export function syncNow(): Promise<void> {
@@ -69,6 +84,7 @@ async function run(): Promise<void> {
   try {
     const keys = await deriveSyncKeys(code);
     const remoteRec = await api(keys, 'GET', 'state');
+    if (remoteRec) knownVersion = Math.max(knownVersion, remoteRec.updatedAt);
     let remote: SyncState | null = null;
     if (remoteRec) {
       try {
@@ -112,7 +128,12 @@ async function run(): Promise<void> {
 
     // 4. État fusionné : appliqué ici, puis publié.
     useSettings.getState().replaceSynced(merged);
-    await api(keys, 'PUT', 'state', { data: await encryptJson(keys.key, merged), updatedAt: Date.now() });
+    // On ne publie que s'il y a du nouveau : évite que deux appareils ouverts se renvoient la balle.
+    if (!remote || stableStringify(merged) !== stableStringify(remote)) {
+      const version = Date.now();
+      await api(keys, 'PUT', 'state', { data: await encryptJson(keys.key, merged), updatedAt: version });
+      knownVersion = version;
+    }
     patch({ status: 'idle', lastSyncAt: Date.now() });
   } catch (err) {
     patch({ status: 'error', error: err instanceof SyncError ? err.message : 'Synchronisation impossible pour le moment.' });
@@ -122,10 +143,44 @@ async function run(): Promise<void> {
 let timer: ReturnType<typeof setTimeout> | undefined;
 
 /** Déclenche une synchro différée (après une modification locale). */
-export function scheduleSync(delayMs = 4000): void {
+export function scheduleSync(delayMs = 1500): void {
   if (!useSync.getState().code) return;
   clearTimeout(timer);
   timer = setTimeout(() => void syncNow(), delayMs);
+}
+
+/**
+ * Synchro instantanée : tant que l'app est visible, on lit la version du coffre
+ * (quelques octets) et on ne synchronise que si un autre appareil a publié du nouveau.
+ * Rythme : toutes les 3 s pendant 2 min après une activité, puis toutes les 15 s.
+ */
+let lastActivity = Date.now();
+let pollTimer: ReturnType<typeof setTimeout> | undefined;
+let keysCache: { code: string; keys: SyncKeys } | null = null;
+
+export function markActivity(): void {
+  lastActivity = Date.now();
+}
+
+async function pollOnce(): Promise<void> {
+  const { code } = useSync.getState();
+  if (!code || !navigator.onLine || document.visibilityState !== 'visible' || running) return;
+  if (keysCache?.code !== code) keysCache = { code, keys: await deriveSyncKeys(code) };
+  const res = await fetch('/api/sync?version=1', { headers: { 'X-Sync-Id': keysCache.keys.id } }).catch(() => null);
+  if (!res?.ok) return;
+  const { version } = (await res.json()) as { version: number | null };
+  if (version && version > knownVersion) {
+    markActivity();
+    await syncNow();
+  }
+}
+
+function schedulePoll(): void {
+  clearTimeout(pollTimer);
+  const delay = Date.now() - lastActivity < 120_000 ? 3000 : 15_000;
+  pollTimer = setTimeout(() => {
+    void pollOnce().finally(schedulePoll);
+  }, delay);
 }
 
 let started = false;
@@ -135,13 +190,19 @@ export function startAutoSync(): void {
   if (started) return;
   started = true;
   void syncNow();
+  schedulePoll();
   window.addEventListener('online', () => void syncNow());
+  for (const ev of ['pointerdown', 'keydown']) window.addEventListener(ev, markActivity, { passive: true });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') void syncNow();
-    else scheduleSync(500);
+    else {
+      markActivity();
+      scheduleSync(300);
+    }
   });
   useSettings.subscribe((s, prev) => {
     if (s.positions !== prev.positions || s.bookmarks !== prev.bookmarks || s.prefsUpdatedAt !== prev.prefsUpdatedAt || s.deletedBooks !== prev.deletedBooks) {
+      markActivity();
       scheduleSync();
     }
   });

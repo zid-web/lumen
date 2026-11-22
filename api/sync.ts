@@ -1,7 +1,7 @@
 import { SyncIdSchema, SyncItemSchema, SyncPutSchema, SYNC_MAX_BOOK_CHARS } from '../shared/contracts.js';
 import { readEnv, type Env } from './_lib/env.js';
 import { ApiError, clientIp, handler, json, parseBody } from './_lib/http.js';
-import { enforceRateLimit } from './_lib/ratelimit.js';
+import { createMemoryLimiter, enforceRateLimit } from './_lib/ratelimit.js';
 import { getSyncStore, type SyncStore } from './_lib/syncStore.js';
 
 export const config = { runtime: 'nodejs' };
@@ -13,7 +13,11 @@ export const config = { runtime: 'nodejs' };
  *   GET    /api/sync?item=state|book:<id>
  *   PUT    /api/sync  { item, data, updatedAt }
  *   DELETE /api/sync?item=book:<id>
+ *   GET    /api/sync?version=1          → { version } (horodatage du dernier état publié)
  */
+/** Vérifications de version : fréquentes et minuscules, limitées en mémoire pour ne pas consommer Upstash. */
+const versionLimiter = createMemoryLimiter(60, 60_000);
+
 export function createSyncHandler(storeFor: (env: Env) => Promise<SyncStore | null>) {
   return handler(readEnv, async (req, { env }) => {
     const store = await storeFor(env);
@@ -21,6 +25,11 @@ export function createSyncHandler(storeFor: (env: Env) => Promise<SyncStore | nu
 
     const id = SyncIdSchema.safeParse(req.headers.get('x-sync-id'));
     if (!id.success) throw new ApiError('BAD_REQUEST', 'En-tête X-Sync-Id invalide');
+    if (req.method === 'GET' && new URL(req.url).searchParams.get('version') === '1') {
+      const r = await versionLimiter.limit(`${clientIp(req)}:${id.data}`);
+      if (!r.success) throw new ApiError('RATE_LIMITED', 'Trop de vérifications');
+      return json({ version: await store.version(id.data) });
+    }
     const rl = await enforceRateLimit(env, 'sync', clientIp(req), 120, 60);
     const itemParam = () => {
       const p = SyncItemSchema.safeParse(new URL(req.url).searchParams.get('item'));

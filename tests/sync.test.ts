@@ -56,6 +56,18 @@ describe('chiffrement de synchro', () => {
   });
 });
 
+describe('synchro instantanée', () => {
+  it('stableStringify ignore l’ordre des clés', async () => {
+    const { stableStringify } = await import('../src/lib/sync/engine');
+    expect(stableStringify({ b: 1, a: { d: [1, { y: 2, x: 1 }], c: undefined } })).toBe(stableStringify({ a: { d: [1, { x: 1, y: 2 }] }, b: 1 }));
+  });
+  it('la fusion est stable quel que soit l’ordre des livres', () => {
+    const a = state({ books: [{ id: 'b', updatedAt: 1 }, { id: 'a', updatedAt: 1 }] });
+    const b = state({ books: [{ id: 'a', updatedAt: 1 }, { id: 'b', updatedAt: 1 }] });
+    expect(mergeStates(a, b, 1).books).toEqual(mergeStates(b, a, 1).books);
+  });
+});
+
 describe('api/sync', () => {
   const run = (() => {
     const store = createMemorySyncStore();
@@ -78,6 +90,13 @@ describe('api/sync', () => {
     await call('PUT', { body: { item: 'book:abc-1', data: 'livre', updatedAt: 2 } });
     expect((await call('DELETE', { item: 'book:abc-1' })).status).toBe(200);
     expect((await call('GET', { item: 'book:abc-1' })).status).toBe(404);
+  });
+
+  it('expose la version de l’état publié', async () => {
+    const r1 = await call('GET', { item: 'x' });
+    expect(r1.status).toBe(400);
+    const v = await run(new Request('https://lumen.test/api/sync?version=1', { headers: { host: 'lumen.test', 'x-sync-id': id, 'x-forwarded-for': '198.51.100.8' } }));
+    expect(await v.json()).toEqual({ version: 1 });
   });
 
   it('isole les codes et valide les entrées', async () => {

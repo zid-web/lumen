@@ -89,6 +89,6 @@ export function mergeStates(a: SyncState, b: SyncState, now = Date.now()): SyncS
     positions,
     bookmarks,
     deletedBooks,
-    books: [...books].map(([id, updatedAt]) => ({ id, updatedAt })),
+    books: [...books].map(([id, updatedAt]) => ({ id, updatedAt })).sort((x, y) => (x.id < y.id ? -1 : x.id > y.id ? 1 : 0)),
   };
 }
