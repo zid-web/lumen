@@ -21,6 +21,19 @@
       "maxDuration": 10
     }
   },
+  "redirects": [
+    {
+      "source": "/((?!sw\\.js$|sw-retire\\.js$|workbox-[^/]+\\.js$).*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "lumen-two-rust.vercel.app"
+        }
+      ],
+      "destination": "https://lumen-lecture-audio.vercel.app/$1",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/((?!api/|assets/|.*\\.[a-z0-9]+$).*)",
