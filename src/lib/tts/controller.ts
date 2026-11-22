@@ -112,6 +112,7 @@ export class TtsController {
   private mode: 'audio' | 'speech' | null = null;
   private audioEl: HTMLAudioElement | null = null;
   private keepAliveEl: HTMLAudioElement | null = null;
+  private keepAliveTimer: ReturnType<typeof setTimeout> | undefined;
   private currentUrl: string | null = null;
   private boundaries: WordBoundary[] = [];
   private raf = 0;
@@ -151,7 +152,8 @@ export class TtsController {
   /** Charge une file. Si c'est une autre file, la lecture en cours est arrêtée. */
   setQueue(q: PlayerQueue, startIndex = 0): void {
     if (this.queue?.id !== q.id) {
-      this.stop();
+      // Changement de chapitre en cours de lecture : on garde le flux de maintien actif.
+      this.stop(true);
       this.store.setState({ queueId: q.id, paragraph: startIndex, word: null, notice: null });
     }
     this.queue = q;
@@ -165,6 +167,8 @@ export class TtsController {
 
     if (index >= q.paragraphs.length) return this.finish();
     const text = q.paragraphs[index]?.trim() ?? '';
+    // Écran éteint : un flux continu évite que le système suspende l'app entre deux paragraphes.
+    this.startKeepAlive();
     this.store.setState({ status: 'loading', paragraph: index, word: null });
     this.handlers.onParagraph?.(q.id, index);
     if (!text) return void this.play(index + 1);
@@ -189,7 +193,10 @@ export class TtsController {
     this.updateMediaSession(q);
     if (result?.audioUrl) {
       await this.playAudio(result, req, gen);
-      if (cloud) this.prefetch(cloud, index + 1);
+      if (cloud) {
+        this.prefetch(cloud, index + 1);
+        this.warmCache(cloud, index + 2);
+      }
     } else {
       this.playSpeech(req, gen, 0);
     }
@@ -202,8 +209,8 @@ export class TtsController {
     if (this.mode === 'speech') {
       this.cancelSpeech?.();
       this.cancelSpeech = null;
-      this.keepAliveEl?.pause();
     }
+    this.stopKeepAlive();
     if (s === 'loading') this.gen++;
     this.store.setState({ status: 'paused' });
     this.setPlaybackState('paused');
@@ -228,10 +235,11 @@ export class TtsController {
     else this.resume();
   }
 
-  stop(): void {
+  stop(keepAlive = false): void {
     const wasActive = this.state.status !== 'idle';
     this.gen++;
     this.teardown();
+    if (!keepAlive) this.stopKeepAlive();
     this.store.setState({ status: 'idle', word: null });
     this.setPlaybackState('none');
     if (wasActive) this.emitHalt();
@@ -304,6 +312,18 @@ export class TtsController {
     this.discardPrefetch();
     const promise = (navigator.onLine ? cloud.synthesize(req) : cloud.lookup(req)).catch(() => null);
     this.prefetched = { index, sig: sig(req), promise };
+  }
+
+  /** Prépare l'audio d'un paragraphe plus lointain dans le cache (rien n'est joué). */
+  private warmCache(cloud: CloudTtsProvider, index: number): void {
+    const q = this.queue;
+    const text = q?.paragraphs[index]?.trim();
+    if (!q || !text || !navigator.onLine) return;
+    const req = this.buildRequest(q, index, text);
+    void cloud
+      .synthesize(req)
+      .then((r) => r.audioUrl && URL.revokeObjectURL(r.audioUrl))
+      .catch(() => {});
   }
 
   private discardPrefetch(): void {
@@ -414,7 +434,13 @@ export class TtsController {
     );
   }
 
+  private stopKeepAlive(): void {
+    clearTimeout(this.keepAliveTimer);
+    this.keepAliveEl?.pause();
+  }
+
   private startKeepAlive(): void {
+    clearTimeout(this.keepAliveTimer);
     if (!this.keepAliveEl) {
       const k = new Audio(silentWavUrl());
       k.loop = true;
@@ -428,7 +454,6 @@ export class TtsController {
     cancelAnimationFrame(this.raf);
     this.cancelSpeech?.();
     this.cancelSpeech = null;
-    this.keepAliveEl?.pause();
     if (this.audioEl) {
       this.audioEl.onended = null;
       this.audioEl.onerror = null;
@@ -443,8 +468,13 @@ export class TtsController {
 
   private finish(): void {
     const id = this.queue?.id;
-    this.stop();
+    this.stop(true);
     this.discardPrefetch();
+    // Le chapitre suivant va démarrer : on garde le flux quelques secondes pour ne pas être suspendu.
+    this.startKeepAlive();
+    this.keepAliveTimer = setTimeout(() => {
+      if (this.state.status === 'idle' || this.state.status === 'paused') this.stopKeepAlive();
+    }, 15_000);
     if (id) this.handlers.onQueueEnd?.(id);
   }
 
