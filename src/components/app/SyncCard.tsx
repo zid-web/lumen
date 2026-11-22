@@ -23,13 +23,62 @@ export function SyncCard({ available }: { available: boolean | undefined }) {
     return <p className="text-sm text-muted">La synchronisation n’est pas configurée sur ce serveur.</p>;
   }
 
+  const linkForm = (label: string, cta: string) => (
+    <form
+      className="space-y-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!isValidSyncCode(input)) {
+          setInputError('Code invalide : 20 caractères, par ex. ABCDE-12345-FGHJK-67890.');
+          return;
+        }
+        if (code && formatSyncCode(input) === code) {
+          setInputError('C’est déjà le code de cet appareil.');
+          return;
+        }
+        setInputError(null);
+        // Les livres et la progression de cet appareil sont fusionnés dans le coffre de l'autre appareil.
+        setCode(formatSyncCode(input));
+        setInput('');
+        void syncNow();
+      }}
+    >
+      <label htmlFor="sync-code" className="block text-sm text-muted">
+        {label}
+      </label>
+      <div className="flex gap-2">
+        <input
+          id="sync-code"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="XXXXX-XXXXX-XXXXX-XXXXX"
+          autoComplete="off"
+          autoCapitalize="characters"
+          spellCheck={false}
+          className="h-11 min-w-0 flex-1 rounded-full border border-line bg-ink-2 px-4 font-mono text-sm tracking-wider placeholder:text-subtle"
+        />
+        <Button type="submit" variant="secondary">
+          {cta}
+        </Button>
+      </div>
+      {inputError && (
+        <p role="alert" className="text-sm text-danger">
+          {inputError}
+        </p>
+      )}
+    </form>
+  );
+
   if (!code) {
     return (
       <div className="space-y-6">
         <p className="text-sm leading-relaxed text-muted">
           Retrouvez vos livres, votre progression, vos marque-pages et vos réglages sur tous vos appareils, sans créer de compte. Les données sont chiffrées sur l’appareil avant l’envoi : seul votre code permet de les lire.
         </p>
-        <Button
+        {linkForm('Vous avez déjà un code sur un autre appareil ? Saisissez-le ici plutôt que d’en créer un nouveau.', 'Relier')}
+        <div className="border-t border-line pt-5">
+          <p className="mb-3 text-sm text-muted">Premier appareil ? Créez votre code, puis saisissez-le sur les autres.</p>
+          <Button
           onClick={() => {
             setCode(generateSyncCode());
             setShow(true);
@@ -37,45 +86,9 @@ export function SyncCard({ available }: { available: boolean | undefined }) {
           }}
           aria-label="Activer la synchronisation et créer un code"
         >
-          Activer sur cet appareil
+          Créer un nouveau code
         </Button>
-        <form
-          className="space-y-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!isValidSyncCode(input)) {
-              setInputError('Code invalide : 20 caractères, par ex. ABCDE-12345-FGHJK-67890.');
-              return;
-            }
-            setInputError(null);
-            setCode(formatSyncCode(input));
-            void syncNow();
-          }}
-        >
-          <label htmlFor="sync-code" className="block text-sm text-muted">
-            Vous avez déjà un code sur un autre appareil ?
-          </label>
-          <div className="flex gap-2">
-            <input
-              id="sync-code"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="XXXXX-XXXXX-XXXXX-XXXXX"
-              autoComplete="off"
-              autoCapitalize="characters"
-              spellCheck={false}
-              className="h-11 min-w-0 flex-1 rounded-full border border-line bg-ink-2 px-4 font-mono text-sm tracking-wider placeholder:text-subtle"
-            />
-            <Button type="submit" variant="secondary">
-              Relier
-            </Button>
-          </div>
-          {inputError && (
-            <p role="alert" className="text-sm text-danger">
-              {inputError}
-            </p>
-          )}
-        </form>
+        </div>
       </div>
     );
   }
@@ -108,6 +121,13 @@ export function SyncCard({ available }: { available: boolean | undefined }) {
       <p className="text-sm text-muted" role="status" aria-live="polite">
         {status === 'syncing' ? 'Synchronisation…' : status === 'error' ? <span className="text-danger">{error}</span> : lastSyncAt ? `Dernière synchronisation ${ago(lastSyncAt)}.` : 'Pas encore synchronisé.'}
       </p>
+
+      <details className="rounded-2xl border border-line p-4">
+        <summary className="cursor-pointer text-sm text-fg">Relier à un autre appareil (code différent)</summary>
+        <div className="mt-3">
+          {linkForm('Code affiché sur l’autre appareil. Les livres d’ici y seront ajoutés, rien n’est perdu.', 'Relier')}
+        </div>
+      </details>
 
       <div className="flex flex-wrap gap-3">
         <Button variant="secondary" onClick={() => void syncNow()} disabled={status === 'syncing'} aria-label="Synchroniser maintenant">
