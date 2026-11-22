@@ -320,6 +320,8 @@ export class TtsController {
     const text = q?.paragraphs[index]?.trim();
     if (!q || !text || !navigator.onLine) return;
     const req = this.buildRequest(q, index, text);
+    // ElevenLabs est facturé au caractère : on ne prépare pas d'avance au-delà du paragraphe suivant.
+    if (req.engine === 'elevenlabs' || (req.engine !== 'azure' && cloud.id === 'elevenlabs')) return;
     void cloud
       .synthesize(req)
       .then((r) => r.audioUrl && URL.revokeObjectURL(r.audioUrl))
