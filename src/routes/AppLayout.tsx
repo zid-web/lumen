@@ -8,7 +8,11 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
 import { UPDATED_FLAG } from '@/lib/autoUpdate';
 import { fetchHealth } from '@/lib/health';
-import { startAutoSync } from '@/lib/sync/engine';
+import { OriginBanner } from '@/components/app/OriginBanner';
+import { protectStorage, takeHandoffCode } from '@/lib/canonical';
+import { isValidSyncCode } from '@/lib/sync/crypto';
+import { startAutoSync, syncNow } from '@/lib/sync/engine';
+import { useSync } from '@/store/sync';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false, staleTime: 5 * 60_000, networkMode: 'offlineFirst' } },
@@ -85,7 +89,21 @@ export default function AppLayout() {
     void fetchHealth();
   }, [online]);
 
-  useEffect(() => startAutoSync(), []);
+  useEffect(() => {
+    // Transfert depuis une autre adresse : on reprend le code de synchro reçu.
+    const handoff = takeHandoffCode();
+    if (handoff && isValidSyncCode(handoff)) {
+      const apply = () => {
+        const s = useSync.getState();
+        if (!s.code) s.setCode(handoff);
+        void syncNow();
+      };
+      if (useSync.persist.hasHydrated()) apply();
+      else useSync.persist.onFinishHydration(apply);
+    }
+    startAutoSync();
+    void protectStorage();
+  }, []);
 
   const nav = (to: string, label: string, Icon: typeof Library, end = false) => (
     <NavLink
@@ -122,6 +140,7 @@ export default function AppLayout() {
             </div>
           </header>
         )}
+        <OriginBanner />
         {!online && (
           <p role="status" className="flex items-center justify-center gap-2 bg-surface-2 py-2 text-xs text-muted">
             <WifiOff className="size-3.5" aria-hidden /> Hors-ligne — l’audio et les traductions déjà téléchargés restent disponibles.

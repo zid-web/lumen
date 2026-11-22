@@ -37,6 +37,7 @@ export const useLibrary = create<LibraryState>()((set, get) => ({
     set({ books: metas.sort((a, b) => b.addedAt - a.addedAt), loaded: true });
   },
   async add(book) {
+    void import('@/lib/canonical').then((m) => m.protectStorage());
     const d = await db();
     const tx = d.transaction(['books', 'meta'], 'readwrite');
     await tx.objectStore('books').put(book);

@@ -28,9 +28,11 @@ export default function Settings() {
   const health = useQuery({ queryKey: ['health'], queryFn: fetchHealth });
   const [stats, setStats] = useState<{ entries: number; bytes: number } | null>(null);
   const [storage, setStorage] = useState<{ usage: number; quota: number } | null>(null);
+  const [persisted, setPersisted] = useState<boolean | null>(null);
   const refresh = () => {
     void audioCacheStats().then(setStats);
     void navigator.storage?.estimate?.().then((e) => setStorage({ usage: e.usage ?? 0, quota: e.quota ?? 0 }));
+    void navigator.storage?.persisted?.().then(setPersisted).catch(() => setPersisted(null));
   };
   useEffect(refresh, []);
   const mb = (b: number) => `${(b / 1024 / 1024).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} Mo`;
@@ -71,6 +73,8 @@ export default function Settings() {
         <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 text-sm">
           <dt className="text-muted">Audio en cache</dt>
           <dd>{stats ? `${stats.entries} passages · ${mb(stats.bytes)}` : '…'}</dd>
+          <dt className="text-muted">Protection</dt>
+          <dd>{persisted === null ? '…' : persisted ? 'Bibliothèque protégée ✓' : 'Non garantie — installez l’app pour la protéger'}</dd>
           {storage && (
             <>
               <dt className="text-muted">Espace utilisé</dt>
