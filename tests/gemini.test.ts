@@ -113,3 +113,25 @@ describe('Gemini : fournisseur', () => {
     expect(f.mock.calls.filter(([u]) => String(u).includes('generativelanguage'))).toHaveLength(1);
   });
 });
+
+describe('TTS_ENGINES', () => {
+  it('limite et ordonne les moteurs ; un moteur retiré est ignoré même s’il est demandé', async () => {
+    vi.stubEnv('TTS_ENGINES', 'gemini,azure');
+    vi.stubEnv('GEMINI_API_KEY', 'g');
+    vi.stubEnv('ELEVENLABS_API_KEY', 'e');
+    const h = (await (await health(new Request('https://lumen.test/api/health', { headers: { host: 'lumen.test' } }))).json()) as { engines: string[] };
+    expect(h.engines).toEqual(['gemini']); // Azure sans clé dans ce test
+    const f = vi.spyOn(globalThis, 'fetch').mockImplementation(async () =>
+      new Response(JSON.stringify({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'audio/wav', data: wav(tone(2400)).toString('base64') } }] } }] }), { status: 200 }),
+    );
+    const res = await tts(
+      new Request('https://lumen.test/api/tts', {
+        method: 'POST',
+        headers: { host: 'lumen.test', 'content-type': 'application/json', 'x-forwarded-for': '10.8.8.8' },
+        body: JSON.stringify({ text: 'Salut', lang: 'fr', gender: 'male', engine: 'elevenlabs' }),
+      }),
+    );
+    expect(((await res.json()) as { provider: string }).provider).toBe('gemini');
+    expect(f.mock.calls.every(([u]) => String(u).includes('generativelanguage'))).toBe(true);
+  });
+});

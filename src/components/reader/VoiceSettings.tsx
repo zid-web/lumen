@@ -5,6 +5,7 @@ import { Range } from '@/components/ui/range';
 import { Segmented } from '@/components/ui/segmented';
 import { Select } from '@/components/ui/select';
 import { ENGINE_OPTION } from '@/lib/tts/engines';
+import { GeminiVoicePicker } from './GeminiVoicePicker';
 import type { PitchLevel, TtsEngine } from '@/lib/tts/types';
 import { useSettings } from '@/store/settings';
 
@@ -18,6 +19,8 @@ export function VoiceSettingsForm({ onChange }: { onChange?: () => void }) {
     void fetchHealth().then(setHealth);
   }, []);
   const engines = health?.engines ?? [];
+  // Moteur effectif : le choix enregistré s'il est encore disponible, sinon le premier du serveur.
+  const effective = s.engine !== 'auto' && engines.includes(s.engine) ? s.engine : engines[0];
   const patch = (p: Parameters<typeof s.set>[0]) => {
     s.set(p);
     onChange?.();
@@ -37,12 +40,12 @@ export function VoiceSettingsForm({ onChange }: { onChange?: () => void }) {
         <div>
           <Segmented<TtsEngine>
             label="Moteur de voix"
-            value={s.engine === 'auto' ? (engines[0] ?? 'azure') : s.engine}
+            value={effective ?? 'azure'}
             onChange={(engine) => patch({ engine })}
             options={engines.map((e) => ({ value: e, label: ENGINE_OPTION[e].label, ariaLabel: ENGINE_OPTION[e].aria }))}
           />
           {(() => {
-            const current = s.engine === 'auto' ? engines[0] : s.engine;
+            const current = effective;
             const left = current ? health?.remaining[current] : undefined;
             return left !== undefined && current ? (
               <p className="mt-2 text-xs text-subtle">
@@ -52,6 +55,7 @@ export function VoiceSettingsForm({ onChange }: { onChange?: () => void }) {
           })()}
         </div>
       )}
+      {effective === 'gemini' && <GeminiVoicePicker />}
       <Range label="Vitesse" value={s.speed} min={SPEED_MIN} max={SPEED_MAX} step={0.25} format={formatSpeed} onChange={(speed) => patch({ speed })} />
       <Segmented<PitchLevel>
         label="Hauteur"

@@ -30,6 +30,8 @@ export interface SyncedPrefs {
   fontScale: number;
   autoScroll: boolean;
   engine: TtsEngine;
+  /** Voix Gemini choisie dans la bibliothèque (null = voix par défaut selon Femme/Homme). */
+  geminiVoice?: string | null;
 }
 
 export interface SyncState {

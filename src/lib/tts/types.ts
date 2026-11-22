@@ -12,6 +12,8 @@ export interface TtsSynthesisRequest {
   context?: { previous?: string; next?: string };
   /** Moteur souhaité (auto = configuration du serveur). */
   engine?: TtsEngine;
+  /** Voix Gemini (bibliothèque) ; ignorée par les autres moteurs. */
+  voice?: string;
 }
 
 export type TtsEngine = 'auto' | 'azure' | 'elevenlabs' | 'gemini';
@@ -24,6 +26,8 @@ export interface TtsSynthesisResult {
   provider: TtsProviderId;
   /** Vrai si servi depuis le cache IndexedDB. */
   cached?: boolean;
+  /** La voix demandée a été refusée par le moteur. */
+  voiceFallback?: boolean;
 }
 
 export interface TtsProvider {

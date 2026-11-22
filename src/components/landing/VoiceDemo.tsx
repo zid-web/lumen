@@ -78,7 +78,7 @@ export function VoiceDemo() {
         <Segmented<TtsEngine>
           label="Moteur"
           className="mt-4"
-          value={engine === 'auto' ? (engines[0] ?? 'azure') : engine}
+          value={engine !== 'auto' && engines.includes(engine) ? engine : (engines[0] ?? 'azure')}
           onChange={setEngine}
           options={engines.map((e) => ({ value: e, label: ENGINE_OPTION[e].label, ariaLabel: `Comparer avec ${ENGINE_OPTION[e].aria.replace('Moteur ', '')}` }))}
         />

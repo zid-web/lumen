@@ -23,7 +23,8 @@ export function ttsChain(env: Env, engine: 'auto' | CloudEngine = 'auto'): Serve
   };
   const order = configuredEngines(env);
   if (order.length === 0 && engine === 'auto') return [];
-  const ids = engine !== 'auto' ? [engine, ...order.filter((e) => e !== engine)] : order;
+  // Un moteur demandé mais non autorisé (ex. ElevenLabs retiré) est ignoré : ordre du serveur.
+  const ids = engine !== 'auto' && order.includes(engine) ? [engine, ...order.filter((e) => e !== engine)] : order;
   return ids.map((id) => build[id]()).filter((p): p is ServerTtsProvider => p !== null);
 }
 

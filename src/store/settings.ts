@@ -42,6 +42,7 @@ export function pickPrefs(s: SyncedPrefs): SyncedPrefs {
     fontScale: s.fontScale,
     autoScroll: s.autoScroll,
     engine: s.engine ?? 'auto',
+    geminiVoice: s.geminiVoice ?? null,
   };
 }
 
@@ -57,6 +58,7 @@ export const useSettings = create<SettingsState>()(
       fontScale: 1,
       autoScroll: true,
       engine: 'auto',
+      geminiVoice: null,
       prefsUpdatedAt: 0,
       positions: {},
       bookmarks: [],
@@ -89,7 +91,7 @@ export const useSettings = create<SettingsState>()(
           };
         }),
       replaceSynced: ({ prefs, prefsUpdatedAt, positions, bookmarks, deletedBooks }) =>
-        set({ ...prefs, engine: prefs.engine ?? 'auto', prefsUpdatedAt, positions, bookmarks, deletedBooks }),
+        set({ ...prefs, engine: prefs.engine ?? 'auto', geminiVoice: prefs.geminiVoice ?? null, prefsUpdatedAt, positions, bookmarks, deletedBooks }),
     }),
     {
       name: 'lumen-settings',
@@ -104,5 +106,11 @@ export const useSettings = create<SettingsState>()(
 
 export function voiceSettings() {
   const s = useSettings.getState();
-  return { gender: s.gender, speed: s.speed, pitch: PITCH_LEVELS[s.pitchLevel], engine: s.engine ?? 'auto' };
+  return {
+    gender: s.gender,
+    speed: s.speed,
+    pitch: PITCH_LEVELS[s.pitchLevel],
+    engine: s.engine ?? 'auto',
+    ...(s.geminiVoice ? { voice: s.geminiVoice } : {}),
+  };
 }

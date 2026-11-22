@@ -19,6 +19,7 @@ interface ApiTtsResponse {
   wordBoundaries: WordBoundary[];
   durationMs: number;
   provider: TtsProviderId;
+  voiceFallback?: boolean;
 }
 
 /** Garde de forme légère (évite d'embarquer zod dans le bundle de la landing). */
@@ -36,7 +37,7 @@ function base64ToBlob(b64: string, mime: string): Blob {
 }
 
 export async function audioCacheKey(req: TtsSynthesisRequest, provider: TtsProviderId): Promise<string> {
-  return sha256(['v3', req.engine ?? 'auto', provider, req.lang, req.gender, req.speed.toFixed(2), req.pitch, req.text].join('|'));
+  return sha256(['v4', req.engine ?? 'auto', req.voice ?? '', provider, req.lang, req.gender, req.speed.toFixed(2), req.pitch, req.text].join('|'));
 }
 
 /**
@@ -94,7 +95,7 @@ export class CloudTtsProvider implements TtsProvider {
     const blob = base64ToBlob(data.audioBase64, data.mime);
     // Si le serveur a dû se replier sur un autre moteur (quota…), on ne met pas en cache :
     // la prochaine lecture retentera le moteur demandé.
-    const fellBack = req.engine !== undefined && req.engine !== 'auto' && data.provider !== req.engine;
+    const fellBack = (req.engine !== undefined && req.engine !== 'auto' && data.provider !== req.engine) || data.voiceFallback === true;
     if (!fellBack) void putCachedAudio({
       key: await audioCacheKey(req, this.id),
       blob,
@@ -109,6 +110,7 @@ export class CloudTtsProvider implements TtsProvider {
       wordBoundaries: data.wordBoundaries,
       durationMs: data.durationMs,
       provider: data.provider,
+      ...(data.voiceFallback ? { voiceFallback: true } : {}),
     };
   }
 }

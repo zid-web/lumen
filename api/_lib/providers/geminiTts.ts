@@ -123,14 +123,17 @@ export class GeminiTtsProvider implements ServerTtsProvider {
   }
 
   async synthesize(req: TtsRequest, signal?: AbortSignal): Promise<TtsResponse> {
-    let res = await this.call(req, this.voices[req.gender], signal);
-    if (res.status === 400) {
+    const wanted = req.voice ?? this.voices[req.gender];
+    let voiceFallback = false;
+    let res = await this.call(req, wanted, signal);
+    if (res.status === 400 || res.status === 404) {
       const detail = await res.text().catch(() => '');
-      // Voix inconnue de ce modèle : nouvel essai avec la voix par défaut de Gemini.
+      // Voix inconnue de ce modèle : nouvel essai avec la voix par défaut de Gemini (signalé au client).
       if (/voice/i.test(detail)) {
-        console.warn(`[gemini] voix ${this.voices[req.gender]} refusée, voix par défaut`);
+        console.warn(`[gemini] voix ${wanted} refusée, voix par défaut : ${detail.slice(0, 200)}`);
+        voiceFallback = true;
         res = await this.call(req, null, signal);
-      } else throw new ProviderError('gemini', `HTTP 400 ${detail.slice(0, 300)}`, false, 400);
+      } else throw new ProviderError('gemini', `HTTP ${res.status} ${detail.slice(0, 300)}`, false, res.status);
     }
     if (!res.ok) {
       const detail = (await res.text().catch(() => '')).slice(0, 300);
@@ -148,6 +151,7 @@ export class GeminiTtsProvider implements ServerTtsProvider {
       wordBoundaries: estimateBoundaries(req.text, durationMs),
       durationMs,
       provider: 'gemini',
+      ...(voiceFallback ? { voiceFallback: true } : {}),
     };
   }
 }

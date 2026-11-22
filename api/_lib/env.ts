@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 const EnvSchema = z.object({
   TTS_PROVIDER: z.enum(['azure', 'elevenlabs', 'gemini', 'webspeech']).default('webspeech'),
+  /** Moteurs autorisés, dans l'ordre (ex. « gemini,azure »). Vide = tous ceux qui ont une clé. */
+  TTS_ENGINES: z.string().default(''),
   TRANSLATION_PROVIDER: z.enum(['deepl', 'azure', 'none']).default('none'),
   AZURE_SPEECH_KEY: z.string().optional(),
   AZURE_SPEECH_REGION: z.string().optional(),
@@ -52,6 +54,10 @@ export function configuredEngines(env: Env): ('azure' | 'elevenlabs' | 'gemini')
     elevenlabs: Boolean(env.ELEVENLABS_API_KEY),
     gemini: Boolean(env.GEMINI_API_KEY),
   };
+  const explicit = env.TTS_ENGINES.split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter((s): s is 'azure' | 'elevenlabs' | 'gemini' => s === 'azure' || s === 'elevenlabs' || s === 'gemini');
+  if (explicit.length) return [...new Set(explicit)].filter((e) => available[e]);
   const preferred = env.TTS_PROVIDER === 'webspeech' ? [] : [env.TTS_PROVIDER];
   const order = [...preferred, 'gemini', 'elevenlabs', 'azure'] as ('azure' | 'elevenlabs' | 'gemini')[];
   return [...new Set(order)].filter((e) => available[e]);

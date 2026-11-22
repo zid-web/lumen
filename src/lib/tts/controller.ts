@@ -31,6 +31,7 @@ export interface VoiceSettings {
   speed: number;
   pitch: number;
   engine?: TtsEngine;
+  voice?: string;
 }
 
 export interface ControllerHandlers {
@@ -88,7 +89,7 @@ function findBoundary(bounds: WordBoundary[], ms: number): WordBoundary | null {
 }
 
 function sig(req: TtsSynthesisRequest): string {
-  return `${req.engine ?? 'auto'}|${req.lang}|${req.gender}|${req.speed}|${req.pitch}|${req.text}`;
+  return `${req.engine ?? 'auto'}|${req.voice ?? ''}|${req.lang}|${req.gender}|${req.speed}|${req.pitch}|${req.text}`;
 }
 
 /**
@@ -289,6 +290,7 @@ export class TtsController {
       pitch: voice.pitch,
       ...(context ? { context } : {}),
       ...(voice.engine && voice.engine !== 'auto' ? { engine: voice.engine } : {}),
+      ...(voice.voice ? { voice: voice.voice } : {}),
     };
   }
 
@@ -371,7 +373,10 @@ export class TtsController {
     this.mode = 'audio';
     this.currentUrl = result.audioUrl ?? null;
     this.boundaries = result.wordBoundaries ?? [];
-    this.store.setState({ provider: result.provider });
+    this.store.setState({
+      provider: result.provider,
+      ...(result.voiceFallback ? { notice: `Voix « ${req.voice ?? ''} » indisponible : voix par défaut utilisée.` } : {}),
+    });
 
     a.src = result.audioUrl ?? '';
     // ElevenLabs plafonne la vitesse à 1.2 : on complète via playbackRate.

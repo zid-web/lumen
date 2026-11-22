@@ -19,6 +19,9 @@
     },
     "api/sync.ts": {
       "maxDuration": 10
+    },
+    "api/voices.ts": {
+      "maxDuration": 15
     }
   },
   "redirects": [

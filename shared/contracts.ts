@@ -19,6 +19,8 @@ export const TtsRequestSchema = z.object({
   context: z.object({ previous: z.string().max(1000).optional(), next: z.string().max(1000).optional() }).optional(),
   /** Moteur souhaité : `auto` suit la configuration du serveur. */
   engine: z.enum(['auto', 'azure', 'elevenlabs', 'gemini']).optional(),
+  /** Voix Gemini choisie (bibliothèque de voix) ; ignorée par les autres moteurs. */
+  voice: z.string().trim().min(1).max(120).regex(/^[\p{L}\p{N} _./:-]+$/u).optional(),
 });
 export type TtsRequest = z.infer<typeof TtsRequestSchema>;
 
@@ -42,6 +44,8 @@ export const TtsResponseSchema = z.object({
   wordBoundaries: z.array(WordBoundarySchema),
   durationMs: z.number(),
   provider: TtsProviderIdSchema,
+  /** La voix demandée a été refusée : la voix par défaut du moteur a été utilisée. */
+  voiceFallback: z.boolean().optional(),
 });
 export type TtsResponse = z.infer<typeof TtsResponseSchema>;
 
@@ -105,3 +109,14 @@ export const SyncPutSchema = z
 export type SyncPut = z.infer<typeof SyncPutSchema>;
 export const SyncRecordSchema = z.object({ data: z.string(), updatedAt: z.number() });
 export type SyncRecord = z.infer<typeof SyncRecordSchema>;
+
+// --- Bibliothèque de voix (Gemini) -------------------------------------------
+export const VoiceInfoSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().optional(),
+  category: z.string().optional(),
+  pitch: z.string().optional(),
+});
+export type VoiceInfo = z.infer<typeof VoiceInfoSchema>;
+export const VoicesResponseSchema = z.object({ voices: z.array(VoiceInfoSchema), source: z.enum(['api', 'catalog']) });
