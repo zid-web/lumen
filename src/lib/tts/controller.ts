@@ -375,7 +375,9 @@ export class TtsController {
 
     a.src = result.audioUrl ?? '';
     // ElevenLabs plafonne la vitesse à 1.2 : on complète via playbackRate.
-    a.playbackRate = result.provider === 'elevenlabs' ? req.speed / Math.min(1.2, Math.max(0.7, req.speed)) : 1;
+    // Vitesse : ElevenLabs plafonne à 1.2 (complément local) ; Gemini n'a pas de réglage (tout en local).
+    a.playbackRate =
+      result.provider === 'elevenlabs' ? req.speed / Math.min(1.2, Math.max(0.7, req.speed)) : result.provider === 'gemini' ? req.speed : 1;
     a.preservesPitch = true;
     a.onended = () => {
       if (gen === this.gen) this.next();

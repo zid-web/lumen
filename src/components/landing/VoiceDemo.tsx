@@ -5,13 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Segmented } from '@/components/ui/segmented';
 import { Select } from '@/components/ui/select';
 import { usePlayer } from '@/hooks/usePlayer';
+import { ENGINE_OPTION, PROVIDER_LABEL, type CloudEngine } from '@/lib/tts/engines';
 import { DEMO_LANGS, DEMO_TEXT, type DemoLang } from '@/lib/demo';
 import { cloudProvider, fetchHealth } from '@/lib/health';
 import type { TtsEngine } from '@/lib/tts/types';
 import { TtsController } from '@/lib/tts/controller';
 import { HighlightedText } from '@/components/HighlightedText';
 
-const PROVIDER_LABEL = { azure: 'Azure Neural', elevenlabs: 'ElevenLabs', webspeech: 'Voix du navigateur' } as const;
 
 export function VoiceDemo() {
   const [gender, setGender] = useState<VoiceGender>('female');
@@ -19,7 +19,7 @@ export function VoiceDemo() {
     const l = navigator.language.slice(0, 2) as DemoLang;
     return DEMO_LANGS.includes(l) ? l : 'fr';
   });
-  const [engines, setEngines] = useState<('azure' | 'elevenlabs')[]>([]);
+  const [engines, setEngines] = useState<CloudEngine[]>([]);
   const [engine, setEngine] = useState<TtsEngine>('auto');
   const genderRef = useRef(gender);
   genderRef.current = gender;
@@ -80,10 +80,7 @@ export function VoiceDemo() {
           className="mt-4"
           value={engine === 'auto' ? (engines[0] ?? 'azure') : engine}
           onChange={setEngine}
-          options={[
-            { value: 'azure', label: 'Azure', ariaLabel: 'Comparer avec Azure Neural' },
-            { value: 'elevenlabs', label: 'ElevenLabs ✦', ariaLabel: 'Comparer avec ElevenLabs' },
-          ]}
+          options={engines.map((e) => ({ value: e, label: ENGINE_OPTION[e].label, ariaLabel: `Comparer avec ${ENGINE_OPTION[e].aria.replace('Moteur ', '')}` }))}
         />
       )}
 

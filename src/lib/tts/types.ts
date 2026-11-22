@@ -1,6 +1,6 @@
 import type { SupportedLang, VoiceGender, WordBoundary } from '@shared/langs';
 
-export type TtsProviderId = 'webspeech' | 'azure' | 'elevenlabs';
+export type TtsProviderId = 'webspeech' | 'azure' | 'elevenlabs' | 'gemini';
 
 export interface TtsSynthesisRequest {
   text: string;
@@ -14,7 +14,7 @@ export interface TtsSynthesisRequest {
   engine?: TtsEngine;
 }
 
-export type TtsEngine = 'auto' | 'azure' | 'elevenlabs';
+export type TtsEngine = 'auto' | 'azure' | 'elevenlabs' | 'gemini';
 
 export interface TtsSynthesisResult {
   /** Blob URL de l'audio. Absent pour Web Speech (lecture « live » via `speak`). */

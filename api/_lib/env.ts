@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 const EnvSchema = z.object({
-  TTS_PROVIDER: z.enum(['azure', 'elevenlabs', 'webspeech']).default('webspeech'),
+  TTS_PROVIDER: z.enum(['azure', 'elevenlabs', 'gemini', 'webspeech']).default('webspeech'),
   TRANSLATION_PROVIDER: z.enum(['deepl', 'azure', 'none']).default('none'),
   AZURE_SPEECH_KEY: z.string().optional(),
   AZURE_SPEECH_REGION: z.string().optional(),
@@ -9,6 +9,15 @@ const EnvSchema = z.object({
   ELEVENLABS_MODEL: z.string().default('eleven_multilingual_v2'),
   /** Plafond de caractères ElevenLabs par mois (au-delà : repli Azure). */
   ELEVENLABS_MONTHLY_CHAR_LIMIT: z.coerce.number().int().nonnegative().default(9000),
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_TTS_MODEL: z.string().default('gemini-3.8-flash-tts'),
+  /** Voix Gemini prédéfinies (modifiables sans redéployer le code). */
+  GEMINI_VOICE_MALE: z.string().default('Charon'),
+  GEMINI_VOICE_FEMALE: z.string().default('Aoede'),
+  /** Consigne de narration (speech_metadata.style) : transmise à part, jamais prononcée. Vide = aucune. */
+  GEMINI_STYLE: z.string().default('Warm, natural audiobook narration: calm, expressive, clear diction, unhurried pace.'),
+  /** Plafond mensuel Gemini (≈ 1 M de caractères ≈ 2 romans ≈ 15–20 $ au tarif 2026). */
+  GEMINI_MONTHLY_CHAR_LIMIT: z.coerce.number().int().nonnegative().default(1_000_000),
   ELEVENLABS_VOICE_MALE: z.string().default('JBFqnCBsd6RMkjVDRZzb'),
   ELEVENLABS_VOICE_FEMALE: z.string().default('pFZP5JQG7iQjIQuC4Bku'),
   DEEPL_API_KEY: z.string().optional(),
@@ -36,12 +45,25 @@ export function azureSpeechConfigured(env: Env): env is Env & { AZURE_SPEECH_KEY
  * Provider TTS effectif : le premier configuré dans l'ordre de préférence
  * (même ordre que la chaîne de secours de /api/tts), sinon `webspeech` (client).
  */
+/** Moteurs serveur configurés, dans l'ordre de préférence (TTS_PROVIDER d'abord, Azure en dernier recours). */
+export function configuredEngines(env: Env): ('azure' | 'elevenlabs' | 'gemini')[] {
+  const available = {
+    azure: azureSpeechConfigured(env),
+    elevenlabs: Boolean(env.ELEVENLABS_API_KEY),
+    gemini: Boolean(env.GEMINI_API_KEY),
+  };
+  const preferred = env.TTS_PROVIDER === 'webspeech' ? [] : [env.TTS_PROVIDER];
+  const order = [...preferred, 'gemini', 'elevenlabs', 'azure'] as ('azure' | 'elevenlabs' | 'gemini')[];
+  return [...new Set(order)].filter((e) => available[e]);
+}
+
+/**
+ * Provider TTS effectif : le premier configuré dans l'ordre de préférence
+ * (même ordre que la chaîne de secours de /api/tts), sinon `webspeech` (client).
+ */
 export function effectiveTtsProvider(env: Env): Env['TTS_PROVIDER'] {
   if (env.TTS_PROVIDER === 'webspeech') return 'webspeech';
-  const azure = azureSpeechConfigured(env);
-  const eleven = Boolean(env.ELEVENLABS_API_KEY);
-  const order = env.TTS_PROVIDER === 'azure' ? (['azure', 'elevenlabs'] as const) : (['elevenlabs', 'azure'] as const);
-  return order.find((p) => (p === 'azure' ? azure : eleven)) ?? 'webspeech';
+  return configuredEngines(env)[0] ?? 'webspeech';
 }
 
 export function effectiveTranslationProvider(env: Env): Env['TRANSLATION_PROVIDER'] {

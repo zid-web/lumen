@@ -120,5 +120,6 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['tests/**/*.test.ts'],
+    setupFiles: ['fake-indexeddb/auto'],
   },
 } as import('vite').UserConfig & { test: unknown });

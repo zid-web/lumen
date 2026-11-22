@@ -12,8 +12,8 @@ export interface CharQuota {
 const month = () => new Date().toISOString().slice(0, 7);
 const mem = new Map<string, number>();
 
-export async function elevenLabsQuota(env: Env): Promise<CharQuota> {
-  const key = `lumen:quota:elevenlabs:${month()}`;
+export async function engineQuota(env: Env, engine: 'elevenlabs' | 'gemini'): Promise<CharQuota> {
+  const key = `lumen:quota:${engine}:${month()}`;
   if (env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN) {
     try {
       const { Redis } = await import('@upstash/redis');
@@ -39,4 +39,11 @@ export async function elevenLabsQuota(env: Env): Promise<CharQuota> {
       mem.set(key, (mem.get(key) ?? 0) + n);
     },
   };
+}
+
+/** Compatibilité. */
+export const elevenLabsQuota = (env: Env) => engineQuota(env, 'elevenlabs');
+
+export function monthlyLimit(env: Env, engine: 'elevenlabs' | 'gemini'): number {
+  return engine === 'elevenlabs' ? env.ELEVENLABS_MONTHLY_CHAR_LIMIT : env.GEMINI_MONTHLY_CHAR_LIMIT;
 }

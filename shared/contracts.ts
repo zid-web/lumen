@@ -18,7 +18,7 @@ export const TtsRequestSchema = z.object({
   /** Paragraphes voisins : donnent au moteur l'intonation d'une lecture continue (ElevenLabs). */
   context: z.object({ previous: z.string().max(1000).optional(), next: z.string().max(1000).optional() }).optional(),
   /** Moteur souhaité : `auto` suit la configuration du serveur. */
-  engine: z.enum(['auto', 'azure', 'elevenlabs']).optional(),
+  engine: z.enum(['auto', 'azure', 'elevenlabs', 'gemini']).optional(),
 });
 export type TtsRequest = z.infer<typeof TtsRequestSchema>;
 
@@ -31,7 +31,9 @@ export const WordBoundarySchema = z.object({
   charLength: z.number().int(),
 });
 
-export const TtsProviderIdSchema = z.enum(['webspeech', 'azure', 'elevenlabs']);
+export const TtsProviderIdSchema = z.enum(['webspeech', 'azure', 'elevenlabs', 'gemini']);
+export const CloudEngineSchema = z.enum(['azure', 'elevenlabs', 'gemini']);
+export type CloudEngine = z.infer<typeof CloudEngineSchema>;
 export type TtsProviderId = z.infer<typeof TtsProviderIdSchema>;
 
 export const TtsResponseSchema = z.object({
@@ -73,7 +75,9 @@ export const HealthResponseSchema = z.object({
   /** Synchronisation entre appareils disponible (nécessite Upstash). */
   sync: z.boolean(),
   /** Moteurs serveur disponibles, dans l'ordre par défaut. */
-  engines: z.array(z.enum(['azure', 'elevenlabs'])),
+  engines: z.array(CloudEngineSchema),
+  /** Caractères restants ce mois-ci par moteur payant plafonné. */
+  remaining: z.record(z.number()).optional(),
   /** Caractères ElevenLabs restants ce mois-ci (plafond de sécurité), si configuré. */
   premiumRemaining: z.number().optional(),
   time: z.string(),

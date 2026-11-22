@@ -2,7 +2,7 @@ import type { TranslateRequest, TranslateResponse, TtsRequest, TtsResponse } fro
 
 /** Provider TTS côté serveur : renvoie l'audio encodé + timestamps des mots. */
 export interface ServerTtsProvider {
-  readonly id: 'azure' | 'elevenlabs';
+  readonly id: 'azure' | 'elevenlabs' | 'gemini';
   synthesize(req: TtsRequest, signal?: AbortSignal): Promise<TtsResponse>;
 }
 

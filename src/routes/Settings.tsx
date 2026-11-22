@@ -9,7 +9,7 @@ import { audioCacheStats, clearAudioCache, db } from '@/lib/db';
 import { fetchHealth } from '@/lib/health';
 import { useSettings } from '@/store/settings';
 
-const TTS_LABEL = { azure: 'Azure Neural Voices', elevenlabs: 'ElevenLabs', webspeech: 'Voix du navigateur (Web Speech)' } as const;
+const TTS_LABEL = { azure: 'Azure Neural Voices', elevenlabs: 'ElevenLabs', gemini: 'Google Gemini', webspeech: 'Voix du navigateur (Web Speech)' } as const;
 const TR_LABEL = { deepl: 'DeepL', azure: 'Azure Translator', none: 'Désactivée' } as const;
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {

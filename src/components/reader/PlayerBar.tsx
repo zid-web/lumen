@@ -2,10 +2,10 @@ import { Loader2, Pause, Play, SkipBack, SkipForward, Square } from 'lucide-reac
 import { SPEEDS } from '@/lib/tts/types';
 import { appPlayer } from '@/lib/tts/player';
 import { usePlayer } from '@/hooks/usePlayer';
+import { PROVIDER_LABEL } from '@/lib/tts/engines';
 import { useSettings } from '@/store/settings';
 import { formatSpeed } from './VoiceSettings';
 
-const PROVIDER_LABEL = { azure: 'Azure Neural', elevenlabs: 'ElevenLabs', webspeech: 'Voix du navigateur' } as const;
 
 export function PlayerBar({ total, chapterTitle }: { total: number; chapterTitle: string }) {
   const status = usePlayer(appPlayer, (s) => s.status);

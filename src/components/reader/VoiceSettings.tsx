@@ -4,6 +4,7 @@ import { fetchHealth, type ClientHealth } from '@/lib/health';
 import { Range } from '@/components/ui/range';
 import { Segmented } from '@/components/ui/segmented';
 import { Select } from '@/components/ui/select';
+import { ENGINE_OPTION } from '@/lib/tts/engines';
 import type { PitchLevel, TtsEngine } from '@/lib/tts/types';
 import { useSettings } from '@/store/settings';
 
@@ -38,16 +39,17 @@ export function VoiceSettingsForm({ onChange }: { onChange?: () => void }) {
             label="Moteur de voix"
             value={s.engine === 'auto' ? (engines[0] ?? 'azure') : s.engine}
             onChange={(engine) => patch({ engine })}
-            options={[
-              { value: 'azure', label: 'Azure', ariaLabel: 'Moteur Azure Neural' },
-              { value: 'elevenlabs', label: 'ElevenLabs ✦', ariaLabel: 'Moteur ElevenLabs, premium' },
-            ]}
+            options={engines.map((e) => ({ value: e, label: ENGINE_OPTION[e].label, ariaLabel: ENGINE_OPTION[e].aria }))}
           />
-          {health?.premiumRemaining !== undefined && (
-            <p className="mt-2 text-xs text-subtle">
-              ElevenLabs : {health.premiumRemaining.toLocaleString('fr-FR')} caractères restants ce mois-ci. Au-delà, Lumen repasse automatiquement sur Azure.
-            </p>
-          )}
+          {(() => {
+            const current = s.engine === 'auto' ? engines[0] : s.engine;
+            const left = current ? health?.remaining[current] : undefined;
+            return left !== undefined && current ? (
+              <p className="mt-2 text-xs text-subtle">
+                {ENGINE_OPTION[current].label.replace(' ✦', '')} : {left.toLocaleString('fr-FR')} caractères restants ce mois-ci. Au-delà, Lumen passe automatiquement au moteur suivant.
+              </p>
+            ) : null;
+          })()}
         </div>
       )}
       <Range label="Vitesse" value={s.speed} min={SPEED_MIN} max={SPEED_MAX} step={0.25} format={formatSpeed} onChange={(speed) => patch({ speed })} />
