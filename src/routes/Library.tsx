@@ -23,6 +23,9 @@ function Cover({ book }: { book: BookMeta }) {
   );
 }
 
+/** EPUB importés avant le correctif d'extraction : texte potentiellement faux. */
+const needsReimport = (b: BookMeta) => b.source === 'epub' && (b.importVersion ?? 1) < 2;
+
 export default function Library() {
   const { books, loaded, load, add, remove } = useLibrary();
   const positions = useSettings((s) => s.positions);
@@ -120,6 +123,18 @@ export default function Library() {
                       {LANGS[b.lang].label} · {b.chapterCount} chap.
                     </p>
                     {pos && <p className="mt-0.5 text-amber">Reprendre chap. {pos.chapter + 1}</p>}
+                    {needsReimport(b) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm(`« ${b.title} » a été importé avec une ancienne version de Lumen : le texte peut être incorrect.\n\nSupprimer cette copie (sur tous vos appareils synchronisés) ? Vous pourrez ensuite réimporter le fichier.`)) void remove(b.id);
+                        }}
+                        className="mt-1 inline-flex rounded-full bg-amber/15 px-2 py-0.5 text-[11px] font-medium text-amber hover:bg-amber/25"
+                        aria-label={`${b.title} : ancienne importation, à réimporter`}
+                      >
+                        À réimporter
+                      </button>
+                    )}
                   </div>
                   <button
                     type="button"

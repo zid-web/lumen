@@ -17,6 +17,8 @@ export interface BookMeta {
   paragraphCount: number;
   addedAt: number;
   hue: number;
+  /** Version de l'extracteur (absent = import antérieur au correctif EPUB de nov. 2026). */
+  importVersion?: number;
 }
 
 export interface Book extends BookMeta {

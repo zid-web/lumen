@@ -5,6 +5,9 @@ import { uid } from '../hash';
 import { detectLang } from './detect';
 import { parsePlainText, titleFromFilename } from './parse';
 
+/** À incrémenter quand l'extraction change de façon visible (2 = EPUB en <div>, pages annexes). */
+export const IMPORT_VERSION = 2;
+
 export const MAX_IMPORT_BYTES = 30 * 1024 * 1024;
 
 const ImportedSchema = z.object({
@@ -33,6 +36,7 @@ function build(source: Book['source'], data: { title: string; author: string; ch
     paragraphCount: chapters.reduce((n, c) => n + c.paragraphs.length, 0),
     addedAt: Date.now(),
     hue: Math.floor(Math.random() * 360),
+    importVersion: IMPORT_VERSION,
   };
 }
 
