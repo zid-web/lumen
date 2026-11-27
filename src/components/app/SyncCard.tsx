@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Check, Copy, Eye, EyeOff, Loader2, RefreshCw } from 'lucide-react';
+import { Check, Copy, Eye, EyeOff, Loader2, RefreshCw, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatSyncCode, generateSyncCode, isValidSyncCode } from '@/lib/sync/crypto';
 import { syncNow } from '@/lib/sync/engine';
+import { useLibrary } from '@/store/library';
 import { useSync } from '@/store/sync';
 
 function ago(ts: number): string {
@@ -13,7 +14,9 @@ function ago(ts: number): string {
 }
 
 export function SyncCard({ available }: { available: boolean | undefined }) {
-  const { code, lastSyncAt, status, error, setCode } = useSync();
+  const { code, lastSyncAt, status, error, setCode, vaultBooks, missing } = useSync();
+  const localBooks = useLibrary((s) => s.books.filter((b) => b.source !== 'sample').length);
+  const [repaired, setRepaired] = useState(false);
   const [input, setInput] = useState('');
   const [show, setShow] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -121,6 +124,26 @@ export function SyncCard({ available }: { available: boolean | undefined }) {
       <p className="text-sm text-muted" role="status" aria-live="polite">
         {status === 'syncing' ? 'Synchronisation…' : status === 'error' ? <span className="text-danger">{error}</span> : lastSyncAt ? `Dernière synchronisation ${ago(lastSyncAt)}.` : 'Pas encore synchronisé.'}
       </p>
+      {vaultBooks !== null && status !== 'error' && (
+        <div className="text-sm text-muted">
+          <p>
+            {vaultBooks} livre{vaultBooks > 1 ? 's' : ''} dans le coffre · {localBooks} sur cet appareil
+          </p>
+          {missing.length > 0 && (
+            <div className="mt-2 rounded-2xl border border-amber/40 bg-amber/5 p-3">
+              <p className="text-fg">Pas encore reçu{missing.length > 1 ? 's' : ''} sur cet appareil :</p>
+              <ul className="mt-1 list-disc pl-5">
+                {missing.map((m) => (
+                  <li key={m.id}>{m.title}</li>
+                ))}
+              </ul>
+              <p className="mt-2 text-xs text-subtle">
+                L’appareil qui possède ce livre le renverra automatiquement à sa prochaine ouverture de Lumen. Sinon, sur cet appareil-là : « Réparer la synchronisation ».
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       <details className="rounded-2xl border border-line p-4">
         <summary className="cursor-pointer text-sm text-fg">Relier à un autre appareil (code différent)</summary>
@@ -132,6 +155,16 @@ export function SyncCard({ available }: { available: boolean | undefined }) {
       <div className="flex flex-wrap gap-3">
         <Button variant="secondary" onClick={() => void syncNow()} disabled={status === 'syncing'} aria-label="Synchroniser maintenant">
           {status === 'syncing' ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <RefreshCw className="size-4" aria-hidden />} Synchroniser
+        </Button>
+        <Button
+          variant="secondary"
+          disabled={status === 'syncing'}
+          onClick={() => {
+            setRepaired(false);
+            void syncNow({ full: true }).then(() => setRepaired(useSync.getState().status === 'idle'));
+          }}
+        >
+          <Wrench className="size-4" aria-hidden /> {repaired ? 'Livres renvoyés ✓' : 'Réparer la synchronisation'}
         </Button>
         <Button
           variant="ghost"

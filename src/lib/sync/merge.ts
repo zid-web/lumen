@@ -43,7 +43,11 @@ export interface SyncState {
   /** Livres supprimés : id → date de suppression. */
   deletedBooks: Record<string, number>;
   /** Livres importés présents dans le coffre (les exemples ne sont pas synchronisés). */
-  books: { id: string; updatedAt: number }[];
+  books: { id: string; updatedAt: number; title?: string }[];
+  /** Livre listé mais introuvable dans le coffre : id → date du constat (réparation automatique). */
+  missingBooks?: Record<string, number>;
+  /** Livre renvoyé dans le coffre par l'appareil qui le possède : id → date. */
+  restoredBooks?: Record<string, number>;
 }
 
 const TOMBSTONE_TTL = 90 * 24 * 3600 * 1000;
@@ -79,10 +83,17 @@ export function mergeStates(a: SyncState, b: SyncState, now = Date.now()): SyncS
     .sort((x, y) => x.createdAt - y.createdAt);
 
   const books = new Map<string, number>();
+  const titles = new Map<string, string>();
   for (const x of [...a.books, ...b.books]) {
     if (deletedBooks[x.id] !== undefined && deletedBooks[x.id]! >= x.updatedAt) continue;
     books.set(x.id, Math.max(books.get(x.id) ?? 0, x.updatedAt));
+    if (x.title) titles.set(x.id, x.title);
   }
+  const maxMap = (x: Record<string, number> = {}, y: Record<string, number> = {}) => {
+    const out: Record<string, number> = {};
+    for (const src of [x, y]) for (const [k, v] of Object.entries(src)) if (books.has(k)) out[k] = Math.max(out[k] ?? 0, v);
+    return out;
+  };
 
   return {
     v: 1,
@@ -91,6 +102,10 @@ export function mergeStates(a: SyncState, b: SyncState, now = Date.now()): SyncS
     positions,
     bookmarks,
     deletedBooks,
-    books: [...books].map(([id, updatedAt]) => ({ id, updatedAt })).sort((x, y) => (x.id < y.id ? -1 : x.id > y.id ? 1 : 0)),
+    books: [...books]
+      .map(([id, updatedAt]) => ({ id, updatedAt, ...(titles.has(id) ? { title: titles.get(id)! } : {}) }))
+      .sort((x, y) => (x.id < y.id ? -1 : x.id > y.id ? 1 : 0)),
+    missingBooks: maxMap(a.missingBooks, b.missingBooks),
+    restoredBooks: maxMap(a.restoredBooks, b.restoredBooks),
   };
 }

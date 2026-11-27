@@ -29,6 +29,16 @@ describe('fusion de synchro', () => {
     expect(m.books.map((x) => x.id)).toEqual(['b1']);
     expect(m.deletedBooks.b2).toBeDefined();
   });
+
+  it('garde titres et signalements de livres manquants (réparation automatique)', () => {
+    const a = state({ books: [{ id: 'fox', updatedAt: 1, title: 'Fantastic Mr Fox' }], missingBooks: { fox: 100 } });
+    const b = state({ books: [{ id: 'fox', updatedAt: 1 }, { id: 'gone', updatedAt: 1 }], restoredBooks: { fox: 50, gone: 9 }, deletedBooks: { gone: now - 10 } });
+    const m = mergeStates(a, b, now);
+    expect(m.books).toEqual([{ id: 'fox', updatedAt: 1, title: 'Fantastic Mr Fox' }]);
+    expect(m.missingBooks).toEqual({ fox: 100 });
+    expect(m.restoredBooks).toEqual({ fox: 50 });
+    expect(mergeStates(b, a, now)).toEqual(m);
+  });
 });
 
 describe('chiffrement de synchro', () => {

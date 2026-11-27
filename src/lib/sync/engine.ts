@@ -34,7 +34,7 @@ async function localState(): Promise<SyncState> {
     positions: s.positions,
     bookmarks: s.bookmarks,
     deletedBooks: s.deletedBooks,
-    books: metas.filter((m) => m.source !== 'sample').map((m) => ({ id: m.id, updatedAt: m.addedAt })),
+    books: metas.filter((m) => m.source !== 'sample').map((m) => ({ id: m.id, updatedAt: m.addedAt, title: m.title })),
   };
 }
 
@@ -56,8 +56,12 @@ let running: Promise<void> | null = null;
 let knownVersion = 0;
 
 /** Synchronise avec le coffre chiffré. Sans effet si la synchro n'est pas activée. */
-export function syncNow(): Promise<void> {
-  running ??= run().finally(() => {
+export function syncNow(opts: { full?: boolean } = {}): Promise<void> {
+  if (running) {
+    // Une réparation demandée pendant une synchro s'exécute juste après.
+    return opts.full ? running.then(() => syncNow(opts)) : running;
+  }
+  running = run(opts.full === true).finally(() => {
     running = null;
   });
   return running;
@@ -76,7 +80,7 @@ function hydrated(store: Persisted): Promise<void> {
   });
 }
 
-async function run(): Promise<void> {
+async function run(full: boolean): Promise<void> {
   await Promise.all([hydrated(useSync), hydrated(useSettings)]);
   const { code, patch } = useSync.getState();
   if (!code || !navigator.onLine) return;
@@ -105,20 +109,38 @@ async function run(): Promise<void> {
       if (remoteBookIds.has(id)) await api(keys, 'DELETE', `book:${id}`);
     }
 
-    // 2. Nouveaux livres d'ici → envoi chiffré.
+    // 2. Livres d'ici → envoi chiffré : nouveaux, signalés manquants par un autre appareil, ou tous (réparation).
     const d = await db();
+    const missingBooks = (merged.missingBooks ??= {});
+    const restoredBooks = (merged.restoredBooks ??= {});
+    const isMissing = (id: string) => (missingBooks[id] ?? 0) > (restoredBooks[id] ?? 0);
     for (const id of localBookIds) {
-      if (remoteBookIds.has(id) || merged.deletedBooks[id] !== undefined) continue;
+      if (merged.deletedBooks[id] !== undefined) continue;
+      if (remoteBookIds.has(id) && !isMissing(id) && !full) continue;
       const book = await d.get('books', id);
-      if (book) await api(keys, 'PUT', `book:${id}`, { data: await encryptJson(keys.key, book), updatedAt: book.addedAt });
+      if (!book) continue;
+      await api(keys, 'PUT', `book:${id}`, { data: await encryptJson(keys.key, book), updatedAt: book.addedAt });
+      if (isMissing(id)) restoredBooks[id] = Date.now();
     }
 
-    // 3. Livres d'ailleurs → téléchargement.
-    for (const { id } of merged.books) {
+    // 3. Livres d'ailleurs → téléchargement. Introuvable : signalé, l'appareil qui l'a le renverra.
+    const missing: { id: string; title: string }[] = [];
+    for (const { id, title } of merged.books) {
       if (localBookIds.has(id) || merged.deletedBooks[id] !== undefined) continue;
       const rec = await api(keys, 'GET', `book:${id}`);
-      if (!rec) continue;
-      const book = await decryptJson<Book>(keys.key, rec.data);
+      let book: Book | null = null;
+      if (rec) {
+        try {
+          book = await decryptJson<Book>(keys.key, rec.data);
+        } catch {
+          book = null;
+        }
+      }
+      if (!book) {
+        missing.push({ id, title: title ?? 'Livre sans titre' });
+        if (!isMissing(id)) missingBooks[id] = Date.now();
+        continue;
+      }
       const tx = d.transaction(['books', 'meta'], 'readwrite');
       await tx.objectStore('books').put(book);
       await tx.objectStore('meta').put(toMeta(book));
@@ -134,7 +156,7 @@ async function run(): Promise<void> {
       await api(keys, 'PUT', 'state', { data: await encryptJson(keys.key, merged), updatedAt: version });
       knownVersion = version;
     }
-    patch({ status: 'idle', lastSyncAt: Date.now() });
+    patch({ status: 'idle', lastSyncAt: Date.now(), vaultBooks: merged.books.length, missing });
   } catch (err) {
     patch({ status: 'error', error: err instanceof SyncError ? err.message : 'Synchronisation impossible pour le moment.' });
   }

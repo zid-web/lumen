@@ -8,8 +8,11 @@ interface SyncStoreState {
   lastSyncAt: number | null;
   status: 'idle' | 'syncing' | 'error';
   error: string | null;
+  /** Diagnostic de la dernière synchro. */
+  vaultBooks: number | null;
+  missing: { id: string; title: string }[];
   setCode: (code: string | null) => void;
-  patch: (p: Partial<Pick<SyncStoreState, 'lastSyncAt' | 'status' | 'error'>>) => void;
+  patch: (p: Partial<Pick<SyncStoreState, 'lastSyncAt' | 'status' | 'error' | 'vaultBooks' | 'missing'>>) => void;
 }
 
 export const useSync = create<SyncStoreState>()(
@@ -19,7 +22,9 @@ export const useSync = create<SyncStoreState>()(
       lastSyncAt: null,
       status: 'idle',
       error: null,
-      setCode: (code) => set({ code, lastSyncAt: null, status: 'idle', error: null }),
+      vaultBooks: null,
+      missing: [],
+      setCode: (code) => set({ code, lastSyncAt: null, status: 'idle', error: null, vaultBooks: null, missing: [] }),
       patch: (p) => set(p),
     }),
     {
