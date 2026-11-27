@@ -46,7 +46,10 @@ export const TtsResponseSchema = z.object({
   provider: TtsProviderIdSchema,
   /** La voix demandée a été refusée : la voix par défaut du moteur a été utilisée. */
   voiceFallback: z.boolean().optional(),
+  /** Le moteur demandé n'a pas pu lire ce passage : pourquoi (affiché à l'utilisateur). */
+  fallbackReason: z.enum(['rate_limit', 'daily_quota', 'timeout', 'error', 'budget']).optional(),
 });
+export type FallbackReason = NonNullable<TtsResponse['fallbackReason']>;
 export type TtsResponse = z.infer<typeof TtsResponseSchema>;
 
 export const TranslateRequestSchema = z
@@ -84,6 +87,10 @@ export const HealthResponseSchema = z.object({
   remaining: z.record(z.number()).optional(),
   /** Caractères ElevenLabs restants ce mois-ci (plafond de sécurité), si configuré. */
   premiumRemaining: z.number().optional(),
+  /** Moteurs en pause après une limite de requêtes : fin de la pause (ISO). */
+  paused: z.record(z.string()).optional(),
+  /** Dernier repli d'un moteur vers un autre (diagnostic). */
+  lastFallback: z.object({ engine: z.string(), reason: z.string(), detail: z.string(), at: z.string() }).optional(),
   time: z.string(),
 });
 export type HealthResponse = z.infer<typeof HealthResponseSchema>;

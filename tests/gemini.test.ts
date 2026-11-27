@@ -135,3 +135,41 @@ describe('TTS_ENGINES', () => {
     expect(f.mock.calls.every(([u]) => String(u).includes('generativelanguage'))).toBe(true);
   });
 });
+
+describe('Gemini : limites de requêtes', () => {
+  it('lit le délai et le type de quota d’une erreur 429', async () => {
+    const { parseRateLimit } = await import('../api/_lib/providers/geminiTts');
+    expect(parseRateLimit('{"quotaId":"GenerateRequestsPerDayPerProjectPerModel-FreeTier","retryDelay":"37s"}')).toEqual({ retryAfterMs: 37000, daily: true });
+    expect(parseRateLimit('{"quotaId":"GenerateRequestsPerMinute","retryDelay":"2.5s"}')).toEqual({ retryAfterMs: 2500, daily: false });
+  });
+
+  it('quota du jour : bascule avec la raison, puis Gemini est mis en pause', async () => {
+    const { resetEngineStateForTests, msUntilDailyReset } = await import('../api/_lib/cooldown');
+    resetEngineStateForTests();
+    expect(msUntilDailyReset(Date.UTC(2026, 0, 1, 7, 0))).toBe(3600_000);
+    vi.stubEnv('TTS_PROVIDER', 'gemini');
+    vi.stubEnv('GEMINI_API_KEY', 'g');
+    vi.stubEnv('ELEVENLABS_API_KEY', 'e');
+    const limited = '{"error":{"code":429,"details":[{"violations":[{"quotaId":"GenerateRequestsPerDayPerProjectPerModel-FreeTier"}]},{"retryDelay":"40s"}]}}';
+    const f = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async (u) =>
+        String(u).includes('generativelanguage') ? new Response(limited, { status: 429 }) : new Response(JSON.stringify({ audio_base64: 'AAAA', alignment: null }), { status: 200 }),
+      );
+    const req = (n: number) =>
+      new Request('https://lumen.test/api/tts', {
+        method: 'POST',
+        headers: { host: 'lumen.test', 'content-type': 'application/json', 'x-forwarded-for': `10.8.8.${n}` },
+        body: JSON.stringify({ text: 'Bonjour', lang: 'fr', gender: 'male', engine: 'gemini' }),
+      });
+    const a = (await (await tts(req(1))).json()) as { provider: string; fallbackReason?: string };
+    expect(a).toMatchObject({ provider: 'elevenlabs', fallbackReason: 'daily_quota' });
+    const b = (await (await tts(req(2))).json()) as { provider: string; fallbackReason?: string };
+    expect(b).toMatchObject({ provider: 'elevenlabs', fallbackReason: 'daily_quota' });
+    expect(f.mock.calls.filter(([u]) => String(u).includes('generativelanguage'))).toHaveLength(1);
+    const h = (await (await health(new Request('https://lumen.test/api/health', { headers: { host: 'lumen.test' } }))).json()) as { paused?: Record<string, string>; lastFallback?: { reason: string } };
+    expect(h.paused?.gemini).toBeDefined();
+    expect(h.lastFallback?.reason).toBe('daily_quota');
+    resetEngineStateForTests();
+  });
+});

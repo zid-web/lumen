@@ -1,6 +1,7 @@
 import type { HealthResponse } from '../shared/contracts.js';
 import { configuredEngines, effectiveTranslationProvider, effectiveTtsProvider, readEnv } from './_lib/env.js';
 import { engineQuota, monthlyLimit } from './_lib/quota.js';
+import { engineState } from './_lib/cooldown.js';
 import { ApiError, handler, json } from './_lib/http.js';
 
 export const config = { runtime: 'nodejs' };
@@ -15,6 +16,13 @@ const run = handler(readEnv, async (req, { env }) => {
     remaining[e] = Math.max(0, monthlyLimit(env, e) - used);
   }
   const premiumRemaining = remaining.elevenlabs;
+  const state = await engineState(env);
+  const lastFallback = await state.lastFallback().catch(() => null);
+  const paused: Record<string, string> = {};
+  for (const e of engines) {
+    const p = e === 'azure' ? null : await state.pausedUntil(e).catch(() => null);
+    if (p) paused[e] = new Date(p.until).toISOString();
+  }
   const body: HealthResponse = {
     status: 'ok',
     tts: effectiveTtsProvider(env),
@@ -23,6 +31,8 @@ const run = handler(readEnv, async (req, { env }) => {
     engines,
     ...(premiumRemaining !== undefined ? { premiumRemaining } : {}),
     remaining,
+    ...(Object.keys(paused).length ? { paused } : {}),
+    ...(lastFallback ? { lastFallback } : {}),
     sync: Boolean(env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN),
     time: new Date().toISOString(),
   };

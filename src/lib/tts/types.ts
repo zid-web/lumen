@@ -28,6 +28,8 @@ export interface TtsSynthesisResult {
   cached?: boolean;
   /** La voix demandée a été refusée par le moteur. */
   voiceFallback?: boolean;
+  /** Le moteur demandé a passé la main pour ce passage, et pourquoi. */
+  fallbackReason?: 'rate_limit' | 'daily_quota' | 'timeout' | 'error' | 'budget';
 }
 
 export interface TtsProvider {

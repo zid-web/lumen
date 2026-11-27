@@ -368,6 +368,23 @@ export class TtsController {
     return this.audioEl;
   }
 
+  private fallbackShown: string | null = null;
+
+  /** Message quand le moteur choisi a passé la main (et effacé quand il reprend). */
+  private fallbackState(req: TtsSynthesisRequest, result: TtsSynthesisResult): { notice?: string | null } {
+    const expected = req.engine && req.engine !== 'auto' ? req.engine : this.opts.getCloud()?.id;
+    const msg = fallbackNotice(expected, result);
+    if (msg) {
+      this.fallbackShown = msg;
+      return { notice: msg };
+    }
+    if (this.fallbackShown && result.provider === expected && this.store.getState().notice === this.fallbackShown) {
+      this.fallbackShown = null;
+      return { notice: null };
+    }
+    return {};
+  }
+
   private async playAudio(result: TtsSynthesisResult, req: TtsSynthesisRequest, gen: number): Promise<void> {
     const a = this.audio();
     this.mode = 'audio';
@@ -376,6 +393,7 @@ export class TtsController {
     this.store.setState({
       provider: result.provider,
       ...(result.voiceFallback ? { notice: `Voix « ${req.voice ?? ''} » indisponible : voix par défaut utilisée.` } : {}),
+      ...this.fallbackState(req, result),
     });
 
     a.src = result.audioUrl ?? '';
@@ -504,5 +522,25 @@ export class TtsController {
 
   private setPlaybackState(s: MediaSessionPlaybackState): void {
     if (this.opts.mediaSession && typeof navigator !== 'undefined' && 'mediaSession' in navigator) navigator.mediaSession.playbackState = s;
+  }
+}
+
+const ENGINE_NAME: Record<string, string> = { gemini: 'Gemini', elevenlabs: 'ElevenLabs', azure: 'Azure' };
+
+export function fallbackNotice(engine: string | undefined, result: TtsSynthesisResult): string | null {
+  if (!engine || engine === 'webspeech' || !result.fallbackReason || result.provider === engine || result.provider === 'webspeech') return null;
+  const name = ENGINE_NAME[engine] ?? engine;
+  const to = ENGINE_NAME[result.provider] ?? result.provider;
+  switch (result.fallbackReason) {
+    case 'rate_limit':
+      return `${name} : trop de demandes en peu de temps (offre gratuite). ${to} lit ce passage, retour à ${name} dès que possible.`;
+    case 'daily_quota':
+      return `${name} : quota du jour atteint (offre gratuite). ${to} prend le relais jusqu’à la remise à zéro (vers 9 h).`;
+    case 'timeout':
+      return `${name} a mis trop de temps à répondre. ${to} lit ce passage.`;
+    case 'budget':
+      return `Plafond mensuel ${name} atteint : ${to} prend le relais.`;
+    default:
+      return `${name} indisponible pour ce passage : ${to} prend le relais.`;
   }
 }

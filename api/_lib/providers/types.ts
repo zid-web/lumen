@@ -17,6 +17,8 @@ export class ProviderError extends Error {
     message: string,
     readonly retryable = true,
     readonly status?: number,
+    /** Limite de requêtes : délai conseillé avant nouvel essai, et s'il s'agit du quota du jour. */
+    readonly limit?: { retryAfterMs: number; daily: boolean },
   ) {
     super(`[${provider}] ${message}`);
   }

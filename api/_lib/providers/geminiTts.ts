@@ -95,6 +95,13 @@ export function estimateBoundaries(text: string, durationMs: number): WordBounda
   });
 }
 
+/** Lit une erreur 429 de l'API Gemini : délai de nouvel essai (RetryInfo) et type de quota (minute / jour). */
+export function parseRateLimit(detail: string): { retryAfterMs: number; daily: boolean } {
+  const delay = /"retryDelay"\s*:\s*"(\d+(?:\.\d+)?)s"/.exec(detail)?.[1];
+  const daily = /PerDay|per day|daily/i.test(detail);
+  return { retryAfterMs: delay ? Math.ceil(Number(delay) * 1000) : daily ? 3600_000 : 60_000, daily };
+}
+
 export class GeminiTtsProvider implements ServerTtsProvider {
   readonly id = 'gemini' as const;
 
@@ -136,8 +143,9 @@ export class GeminiTtsProvider implements ServerTtsProvider {
       } else throw new ProviderError('gemini', `HTTP ${res.status} ${detail.slice(0, 300)}`, false, res.status);
     }
     if (!res.ok) {
-      const detail = (await res.text().catch(() => '')).slice(0, 300);
-      throw new ProviderError('gemini', `HTTP ${res.status} ${detail}`, res.status >= 500 || res.status === 429, res.status);
+      const full = await res.text().catch(() => '');
+      const limit = res.status === 429 ? parseRateLimit(full) : undefined;
+      throw new ProviderError('gemini', `HTTP ${res.status} ${full.slice(0, 300)}`, res.status >= 500 || res.status === 429, res.status, limit);
     }
     const data = ResponseSchema.parse(await res.json());
     const part = data.candidates?.[0]?.content?.parts?.find((p) => p.inlineData);

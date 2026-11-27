@@ -20,6 +20,7 @@ interface ApiTtsResponse {
   durationMs: number;
   provider: TtsProviderId;
   voiceFallback?: boolean;
+  fallbackReason?: TtsSynthesisResult['fallbackReason'];
 }
 
 /** Garde de forme légère (évite d'embarquer zod dans le bundle de la landing). */
@@ -95,7 +96,7 @@ export class CloudTtsProvider implements TtsProvider {
     const blob = base64ToBlob(data.audioBase64, data.mime);
     // Si le serveur a dû se replier sur un autre moteur (quota…), on ne met pas en cache :
     // la prochaine lecture retentera le moteur demandé.
-    const fellBack = (req.engine !== undefined && req.engine !== 'auto' && data.provider !== req.engine) || data.voiceFallback === true;
+    const fellBack = (req.engine !== undefined && req.engine !== 'auto' && data.provider !== req.engine) || data.voiceFallback === true || data.fallbackReason !== undefined;
     if (!fellBack) void putCachedAudio({
       key: await audioCacheKey(req, this.id),
       blob,
@@ -111,6 +112,7 @@ export class CloudTtsProvider implements TtsProvider {
       durationMs: data.durationMs,
       provider: data.provider,
       ...(data.voiceFallback ? { voiceFallback: true } : {}),
+      ...(data.fallbackReason ? { fallbackReason: data.fallbackReason } : {}),
     };
   }
 }
